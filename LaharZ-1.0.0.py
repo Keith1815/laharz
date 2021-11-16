@@ -2024,7 +2024,7 @@ if os.environ.get('DISPLAY','') == '':
 #create main window
 param1 = tk.Tk()
 param1.title("LaharZ")
-param1.geometry("1920x600")
+param1.geometry("1920x1080")
 
 #create a frame
 app = Application(param1)
