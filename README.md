@@ -3,6 +3,8 @@ LAHARZ creates a series of lahar tif files which can then be loaded into QGIS. T
 
 laharz@hotmail.com
 
+Please do use the email address for help and the issue functionality on GitHub to report problems.
+
 Nov 2021
 
 Laharz Python Program
