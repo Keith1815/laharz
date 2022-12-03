@@ -1,4 +1,4 @@
-# Version 1.0.0 Released: 14/11/21
+# Version 1.0.2 Released: xx/xx/xx
 
 # Keith Blair
 # laharz@hotmail.com
@@ -20,6 +20,7 @@
 #Laharz v0.16 - minor fixes; scroll bars for window
 #Laharz v1.0.0 - first public release
 #Laharz v1.0.1 - improved method for finding the energy cone. Significantly faster. Some corrections to obscure conditions when determining the initiation points
+#Laharz v1.0.2 - replaced gmsh with trimesh to allow packaging on conda forge
 
 #==================================================================================================================================================================================
 
@@ -28,11 +29,11 @@ from rasterio.rio.helpers import resolve_inout
 from scipy.ndimage import binary_erosion, binary_fill_holes
 import csv
 import datetime
-import gmsh
+import trimesh
 import numpy as np
 import os
 import pickle
-import pyproj
+import pyprojc
 import rasterio as rio
 import simplekml
 import sys
