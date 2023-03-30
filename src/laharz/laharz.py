@@ -21,7 +21,7 @@
 #Laharz v1.0.0 - first public release
 #Laharz v1.0.1 - improved method for finding the energy cone. Significantly faster. Some corrections to obscure conditions when determining the initiation points
 #Laharz v1.0.2 - replaced gmsh with trimesh to allow packaging on conda forge. Minor fixes
-#Laharz v1.0.3
+#Laharz v1.0.3 - corrected mesh cone projection
 
 #==================================================================================================================================================================================
 
