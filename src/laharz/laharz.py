@@ -21,7 +21,7 @@
 #Laharz v1.0.0 - first public release
 #Laharz v1.0.1 - improved method for finding the energy cone. Significantly faster. Some corrections to obscure conditions when determining the initiation points
 #Laharz v1.0.2 - replaced gmsh with trimesh to allow packaging on conda forge. Minor fixes
-#Laharz v1.0.3 - corrected mesh cone projection
+#Laharz v1.0.3 - corrected mesh cone projection, extraneous new lines in xl csv output and errors in determining initiation points close to the edge
 
 #==================================================================================================================================================================================
 
@@ -1304,8 +1304,9 @@ def laharz():
                 # Technically the point in the mesh is in the bottom left corner but with the elevation of the centre of the pixel. Probably.
                 # As this is intended for visualisation of the landscape and energy cone, a uniform translation of half a pixel is probably not
                 # that significant. Plus presented in paraview where it is in metres not lat/long
-                x = ((i * c_step ) + mesh_lc) * dem_cell_size
-                y = (((pmeshresrow - j -1) + mesh_lr) * r_step) * dem_cell_size  # reverse rows
+                # x = ((i * c_step ) + mesh_lc) * dem_cell_size
+                x = ((i * c_step )) * dem_cell_size
+                y = (((pmeshresrow - j -1)) * r_step) * dem_cell_size  # reverse rows
                 h = dem_v[int(j * r_step) + mesh_lr, int(i * c_step) + mesh_lc]
                 # if int(i*c_step+mesh_lc) == peakrc[0] and int(r_step*j + mesh_lr) == peakrc[1]:
                 #     h = h+1000
@@ -1343,22 +1344,27 @@ def laharz():
         c_step = mesh_cols / pmeshrescol
         r_step = mesh_rows / pmeshresrow
 
-        px = peakrc[1] * dem_cell_size
-        py = peakrc[0] * dem_cell_size
+        px = (peakrc[1] - mesh_lc) * dem_cell_size
+        py = (peakrc[0] - mesh_lr) * dem_cell_size
         
         for i in range(pmeshrescol):  # cols
             for j in range(pmeshresrow):  # rows
                 # Technically the point in the mesh is in the bottom left corner but with the elevation of the centre of the pixel. Probably.
                 # As this is intended for visualisation of the landscape and energy cone, a uniform translation of half a pixel is probably not
                 # that significant. Plus presented in paraview where it is in metres not lat/long
-                x = (i * c_step + mesh_lc) * dem_cell_size
-                y = (j * r_step + mesh_lr) * dem_cell_size
+                # x = (i * c_step + mesh_lc) * dem_cell_size
+                # y = (j * r_step + mesh_lr) * dem_cell_size
+                x = (i * c_step) * dem_cell_size
+                y = (j * r_step) * dem_cell_size
+                # y = ((pmeshresrow - j -1) * r_step) * dem_cell_size
                 r = ((px - x) ** 2 + (py - y) ** 2) ** 0.5
-                y = ((pmeshresrow - j -1) * r_step + mesh_lr) * dem_cell_size
+                # y = ((pmeshresrow - j -1) * r_step + mesh_lr) * dem_cell_size
+                # y = ((pmeshresrow - j -1) * r_step) * dem_cell_size
                 h = -r * phlratio + peak_height
                 # if x >= px and y>=py:
                 #     h = peak_height+500
-                v += [[x, y, h, ]]  # todo assumes square pixels with dem_cell_size; mesh resolution can be different in x and y
+                y_w = (pmeshresrow * r_step - 1) * dem_cell_size - y # invert y
+                v += [[x, y_w, h, ]]  # todo assumes square pixels with dem_cell_size; mesh resolution can be different in x and y
 
         log_msg("Preparing triangle faces...")
         f = []  # list of all horizontal lines
@@ -1382,6 +1388,7 @@ def laharz():
         mesh.export("../" + pwdir + "/" + pmesh_dir + "/Cone.ply")
         log_msg("Cone mesh written to: ../" + pwdir + "/" + pmesh_dir + "/Cone.ply")
 
+    
     def GenLahar(v, ip):
         """Generates the lahar for a particular volume and initiation point"""
         global xsec_area_limit
@@ -1390,7 +1397,7 @@ def laharz():
         dy = 1  # Increment of elevation in m
 
         if pplotxsecarea and ip[0] == pplotip and v == pplotvol:
-            xseccsv = csv.writer(open(pxsec_fn, "w"), delimiter=',', quoting=csv.QUOTE_ALL)
+            xseccsv = csv.writer(open(pxsec_fn, "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
             xseccsv.writerow(["Point", "Latitude", "Longitude", "Row", "Col"])
 
         innund = np.zeros_like(dem_v)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
@@ -1569,7 +1576,7 @@ def laharz():
     def op_ec_points(ec_points):
         """Dumps out all points on the energy cone line for debugging"""
         ec_fn = "../{}/{}".format(pwdir, "ec_points.csv")
-        epcsv = csv.writer(open(ec_fn, "w"), delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
+        epcsv = csv.writer(open(ec_fn, "w", newline = ""), delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
         epcsv.writerow(["Label", "Latitude", "Longitude", "Row", "Column"])
         for i, irc in enumerate(ec_points):
             ll = rc2ll(irc)
@@ -1791,7 +1798,7 @@ def laharz():
                 # g h j
                 # nw direction
                 ip_found = False
-                if i[0] < nrows and i[1] < ncols:
+                if i[0] < nrows-1 and i[1] < ncols-1:
                     b = [i[0] + 1, i[1]]
                     c = [i[0] + 1, i[1] + 1]
                     f = [i[0], i[1] + 1]
@@ -1803,7 +1810,7 @@ def laharz():
                         ip_counter += 1
                         ip_found = True
                 # se direction
-                if i[0] > 0 and i[1] < ncols and not ip_found:
+                if i[0] > 0 and i[1] < ncols-1 and not ip_found:
                     f = [i[0], i[1] + 1]
                     h = [i[0] - 1, i[1]]
                     j = [i[0] - 1, i[1] + 1]
