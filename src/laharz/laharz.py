@@ -41,7 +41,6 @@ from shapely.geometry import Point
 from shapely.geometry import Point as shPoint
 import geopandas as gpd
 import pyproj as pj
-import trimesh
 # import time
 import datetime
 from statistics import mean
