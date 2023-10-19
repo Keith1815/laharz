@@ -68,16 +68,21 @@ class LaharZ_app(tk.Tk):
         # m_frame['bg'] = "White"
         # m_frame['highlightthickness'] = 10
         # m_frame['highlightbackground'] = "#37d3ff"
-        
+
+        # m_frame.pack(expand = True, fill = tk.BOTH)
+
         m_frame.columnconfigure(0, weight = 1)
         m_frame.rowconfigure(0, weight = 1)
         m_frame.grid(row = 0, column = 0, sticky=tk.NSEW)
                
         # Add a canvas in that frame.
-        self.canvas = tk.Canvas(m_frame, width = 1980, height = 1080)
+        self.canvas = tk.Canvas(m_frame) #, width = 1980, height = 1080)
+        self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
         self.canvas.columnconfigure(0, weight = 1)
         self.canvas.rowconfigure(0, weight = 1)
-        self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
+        
         # self.canvas['bg'] = "Red"
         # self.canvas['highlightthickness'] = 10
         # self.canvas['highlightbackground'] = "#00ffff"
@@ -86,9 +91,10 @@ class LaharZ_app(tk.Tk):
         # self.canvas.grid(row = 0, column = 0, sticky=tk.NSEW)
 
         # # Create a vertical scrollbar linked to the canvas.
-        # vsbar = tk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
-        # vsbar.grid(row=0, column = 1, sticky=tk.NS)
-        # self.canvas.configure(yscrollcommand=vsbar.set)
+        vsbar = tk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
+        vsbar.grid(row=0, column = 1, sticky=tk.NS)
+        # vsbar.pack(side = tk.RIGHT, fill = tk.Y)
+        self.canvas.configure(yscrollcommand=vsbar.set)
 
         # # Create a horizontal scrollbar linked to the canvas.
         # hsbar = tk.Scrollbar(self.canvas, orient=tk.HORIZONTAL, command=self.canvas.xview)
@@ -107,6 +113,9 @@ class LaharZ_app(tk.Tk):
             frame.columnconfigure(0, weight = 1)
             frame.rowconfigure(0, weight = 1)
             frame.grid(row = 0, column = 0, padx = 10, pady = 10, sticky = tk.NW)
+            frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            self.canvas.create_window((0, 0), window=frame, anchor="nw")
+            self.canvas.yview_moveto('0')
             return frame
 
         def load_parameters():
@@ -222,6 +231,10 @@ class LaharZ_app(tk.Tk):
             frame.columnconfigure((0,1,2,3), weight = 1)
             frame.rowconfigure(0, weight = 1)
             frame.grid(row = 0, column = 0, padx = 10, pady = 10, sticky = tk.NW)
+            frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            self.canvas.create_window((0, 0), window=frame, anchor="nw")
+            self.canvas.yview_moveto('0')
+
             return frame
 
         def title(r):
@@ -1324,6 +1337,10 @@ class LaharZ_app(tk.Tk):
             frame.columnconfigure((0,1,2,3), weight = 1)
             frame.rowconfigure(0, weight = 1)
             frame.grid(row = 0, column = 0, padx = 10, pady = 10, sticky = tk.NW)
+            frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            self.canvas.create_window((0, 0), window=frame, anchor="nw")
+            self.canvas.yview_moveto('0')
+
             return frame
 
         def title(r):
@@ -2603,11 +2620,11 @@ def load_sys_parms():
         sys_parms['povr_hl_ratio'] = [False, "Override H/L Ratio limits", "Check to override limit on HL Ratios of values between 0.2 and 0.3"]
         sys_parms['pwritetif'] = [True, "Output as tif", "Write all output as tif files"]
         sys_parms['pwriteascii'] = [False, "Output as ascii", "Write all output as ascii files (additionally)"]
-        sys_parms['pwritecsv'] = [False, "Output as ascii", "Write all output as csv files (additionally)"]
+        sys_parms['pwritecsv'] = [False, "Output as csv", "Write all output as csv files (additionally)"]
         #Lahars
-        sys_parms['pscenario_values'] = [['Lahar', 'Debris Flow', 'Custom'], "Flow scenarios", "List of types of flow"]
-        sys_parms['pc1_values'] = [[0.05,0.1], "Co-efficent #1", "Proportionality coefficient for the cross sectional area"]  
-        sys_parms['pc2_values'] = [[200,20], "Co-efficent #2", "Proportionality coefficient for the planar area"]
+        sys_parms['pscenario_values'] = [['Lahar', 'Debris', 'Pyroclastic', 'Custom'], "Flow scenarios", "List of types of flow"]
+        sys_parms['pc1_values'] = [[0.05,0.1, 0.05], "Co-efficent #1", "Proportionality coefficient for the cross sectional area"]  
+        sys_parms['pc2_values'] = [[200,20, 35], "Co-efficent #2", "Proportionality coefficient for the planar area"]
         sys_parms['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area"]
         sys_parms['pxsecareadir'] = ["CrossSections", "Cross Sectional Area Directory", "Directory in which cross sectional area graphics will be placed"]
         sys_parms['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area eg IP01"]

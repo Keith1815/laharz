@@ -10,27 +10,26 @@ class mlsp_app(tk.Tk):
         super().__init__() #copies attributes from parent class (tk)
         self.geometry('1920x1080')
         self.title('Maintain LaharZ System Parameters')
-        # self.columnconfigure(0, weight = 1)
-        # self.rowconfigure(0, weight = 1)
+        self.columnconfigure(0, weight = 1)
+        self.rowconfigure(0, weight = 1)
 
         # # set up frame (use tk not tkk)
         m_frame = tk.Frame(self, width = 1920, height = 1080)
         
-        # m_frame.columnconfigure(0, weight = 1)
-        # m_frame.rowconfigure(0, weight = 1)
+        m_frame.columnconfigure(0, weight = 1)
+        m_frame.rowconfigure(0, weight = 1)
         m_frame.grid(row = 0, column = 0, sticky=tk.NSEW)
                
         # Add a canvas in that frame.
         self.canvas = tk.Canvas(m_frame, width = 1800, height = 1080)
-        # self.canvas.columnconfigure(0, weight = 1)
-        # self.canvas.rowconfigure(0, weight = 1)
+        self.canvas.columnconfigure(0, weight = 1)
+        self.canvas.rowconfigure(0, weight = 1)
         self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
 
         # # Create a vertical scrollbar linked to the canvas.
-        # vsbar = ttk.Scrollbar(m_frame, orient=tk.VERTICAL, command=self.canvas.yview)
-        # vsbar.grid(row=0, column = 1, sticky=tk.NS)
-        # self.canvas.configure(yscrollcommand=vsbar.set)
-        # self.canvas.bind('<Configure>', lambda e: self.canvas.configure(scrollregion = self.canvas.bbox("all")))
+        vsbar = ttk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
+        vsbar.grid(row=0, column = 1, sticky=tk.NS)
+        self.canvas.configure(yscrollcommand=vsbar.set)
 
         # # Create a horizontal scrollbar linked to the canvas.
         # hsbar = tk.Scrollbar(m_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
@@ -44,7 +43,10 @@ class mlsp_app(tk.Tk):
             # Create a frame on the canvas to contain the widgets
             frame = tk.Frame(self.canvas)
             frame.grid(row = 0, column = 0, padx = 10, pady = 10, sticky = tk.NW)
-            # self.canvas.create_window((0,0), window = frame, anchor = "nw")
+            frame.bind("<Configure>", lambda e: self.canvas.configure(scrollregion=self.canvas.bbox("all")))
+            self.canvas.create_window((0, 0), window=frame, anchor="nw")
+            self.canvas.yview_moveto('0')
+
             return frame
 
         def title():
@@ -167,9 +169,9 @@ class mlsp_app(tk.Tk):
                         l[i]['text'] = "Error: not a recognised list"
                     if not error:
                         if "Custom" in sys_parms['pscenario_values'][0]:
-                            expected_length = len(sys_parms['pscenario_values']) - 1
+                            expected_length = len(sys_parms['pscenario_values'][0]) - 1
                         else:
-                            expected_length = len(sys_parms['pscenario_values'])
+                            expected_length = len(sys_parms['pscenario_values'][0])
                         
                         if len(sys_parms[p][0]) != expected_length:
                             error = True 
