@@ -28,7 +28,7 @@
 #Laharz v2.0.0 - Major rewrite. New GUI. Ability to select apex for energy cone. Editable initiation points. Incrementatal heght on energy cone apex.
 
 #==================================================================================================================================================================================
-
+__version__ = "2.0.0"
 import tkinter as tk
 import os
 from pathlib import Path
@@ -46,7 +46,8 @@ from rasterio.rio.helpers import resolve_inout
 import sys
 from scipy.ndimage import binary_erosion, binary_fill_holes
 import csv
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageTk
+import pkg_resources
 
 class LaharZ_app(tk.Tk): 
     def __init__(self):
@@ -78,7 +79,32 @@ class LaharZ_app(tk.Tk):
 
         self.sts_msg = "Welcome to LaharZ"
         self.sts_msg2 = "Activities will be logged in " + log_fn
+        self.exec_frame0() #splash
         self.exec_frame1() #populate widgets
+
+    def exec_frame0(self):
+
+        # Create a frame on the canvas to contain the widgets
+        f1 = tk.Frame(self.canvas, width = 600, height = 346)
+        f1.columnconfigure(0, weight = 1)
+        f1.rowconfigure(0, weight = 1)
+        f1.grid(row = 0, column = 0, sticky = "")
+
+        c2 = tk.Canvas(f1, width = 600, height = 173)
+        c2.columnconfigure(0, weight = 1)
+        c2.rowconfigure(0, weight = 1)
+        c2.grid(row = 2, column = 0, sticky = "")
+
+        tk.Label(f1, text='LaharZ', font=('Times New Roman', 80, 'italic')).grid(row=0, column = 0, columnspan=1, sticky='')
+        tk.Label(f1, text='', font=('Times New Roman', 60, 'italic')).grid(row=1, column = 0, columnspan=1, sticky='')
+        tk.Label(f1, text='Version: ' + __version__, font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+        tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+        logo = pkg_resources.resource_stream(__name__, 'logo/uob.png')
+        image = Image.open(logo)
+        c2.image = ImageTk.PhotoImage(image)
+        c2.create_image(0, 0, image=c2.image, anchor='nw')
+        self.canvas.update()
+        f1.after(3000, f1.destroy())
 
     def exec_frame1(self):
 
@@ -2698,5 +2724,6 @@ for pk in sys_parms.keys():
     log_msg("Parameter: " + pk + "Value: " + str(sys_parms[pk][0]))
 
 geod = pj.Geod(ellps='WGS84')  # used as the projection method to determine distances between two points
+
 app1 = LaharZ_app()
 app1.mainloop()
