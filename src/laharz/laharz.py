@@ -29,26 +29,21 @@
 
 #==================================================================================================================================================================================
 
-
 import tkinter as tk
 import os
 from pathlib import Path
 from tkinter import ttk as ttk
 import pickle
 from shapely.geometry import Polygon
-# from shapely.geometry import box
-from shapely.geometry import Point
 from shapely.geometry import Point as shPoint
 import geopandas as gpd
 import pyproj as pj
-# import time
 import datetime
 from statistics import mean
 import numpy as np
 import rasterio as rio
 from rasterio.rio.helpers import resolve_inout
 import sys
-import time
 from scipy.ndimage import binary_erosion, binary_fill_holes
 import csv
 from PIL import Image, ImageDraw, ImageFont
@@ -63,13 +58,6 @@ class LaharZ_app(tk.Tk):
 
         # # set up frame (us tk not tkk)
         m_frame = tk.Frame(self, width = 1980, heigh = 1080)
-        # m_frame['padding'] = 20
-        # m_frame['borderwidth'] = 5
-        # m_frame['bg'] = "White"
-        # m_frame['highlightthickness'] = 10
-        # m_frame['highlightbackground'] = "#37d3ff"
-
-        # m_frame.pack(expand = True, fill = tk.BOTH)
 
         m_frame.columnconfigure(0, weight = 1)
         m_frame.rowconfigure(0, weight = 1)
@@ -83,26 +71,13 @@ class LaharZ_app(tk.Tk):
         self.canvas.columnconfigure(0, weight = 1)
         self.canvas.rowconfigure(0, weight = 1)
         
-        # self.canvas['bg'] = "Red"
-        # self.canvas['highlightthickness'] = 10
-        # self.canvas['highlightbackground'] = "#00ffff"
-        # self.canvas['borderwidth'] = 5
-        
-        # self.canvas.grid(row = 0, column = 0, sticky=tk.NSEW)
-
         # # Create a vertical scrollbar linked to the canvas.
         vsbar = tk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
         vsbar.grid(row=0, column = 1, sticky=tk.NS)
-        # vsbar.pack(side = tk.RIGHT, fill = tk.Y)
         self.canvas.configure(yscrollcommand=vsbar.set)
 
-        # # Create a horizontal scrollbar linked to the canvas.
-        # hsbar = tk.Scrollbar(self.canvas, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        # hsbar.grid(row=1, column = 0, sticky=tk.EW)
-        # self.canvas.configure(xscrollcommand=hsbar.set)
-
         self.sts_msg = "Welcome to LaharZ"
-        self.sts_msg2 = "Activities will be logged in " + os.sep.join([os.getcwd(), sys_parms['log_file_name'][0] + '.txt'])
+        self.sts_msg2 = "Activities will be logged in " + log_fn
         self.exec_frame1() #populate widgets
 
     def exec_frame1(self):
@@ -134,7 +109,7 @@ class LaharZ_app(tk.Tk):
 
         def working_sub_directory():
 
-            tk.Label(self.frame, text='Working Sub Directory', font=('Helvetica', 12)).grid(row=2, column = 0, padx = 10, columnspan=1, sticky='NW')
+            tk.Label(self.frame, text='Sub Directory', font=('Helvetica', 12)).grid(row=2, column = 0, padx = 10, columnspan=1, sticky='NW')
             
             self.tk_pwdir = tk.Entry(self.frame, font=('Helvetica', 12))
             self.tk_pwdir.grid(row=2, column = 1, padx = 10, columnspan=1, sticky='NW')
@@ -157,12 +132,8 @@ class LaharZ_app(tk.Tk):
             self.tk_cip_button.grid(row=10, column = 0, padx = 40, pady = 0, columnspan=2, sticky='W')
             self.tk_cip_button['command'] = press_cip_button
 
-            # self.tk_pinitpoints = tk.BooleanVar(value = self.pinitpoints)
-            # tk.Checkbutton(self.frame, text='Create Initiation Points', font=('Helvetica', 12), variable=self.tk_pinitpoints).grid(row=10, column = 0, padx = 10, columnspan=1, sticky='W')
 
         def create_lahars_button():
-            # self.tk_pcreatelahars = tk.BooleanVar(value = self.pcreatelahars)
-            # tk.Checkbutton(self.frame, text='Create Flows', font=('Helvetica', 12), variable=self.tk_pcreatelahars).grid(row=11, column = 0, padx = 10, columnspan=1, sticky='W')
             # blank line            
             self.tk_cl_button = tk.Button(self.frame, text='Create Flow Outputs', font=('Helvetica', 12), height = 5, width = 40, bg = '#FFD800', borderwidth = 0)
             self.tk_cl_button.grid(row=11, column = 0, padx = 40, pady = 0, columnspan=2, sticky='W')
@@ -187,7 +158,10 @@ class LaharZ_app(tk.Tk):
             self.pwdir = self.tk_pwdir.get()
             self.sts_msg = ""
             self.sts_msg2 = ""
-            error, self.tk_pwdir_msg['text'] = validate_dir_to_read(self.pwdir)
+            self.pwdir, error, self.tk_pwdir_msg['text'] = validate_dir_to_read(self.pwdir)
+            self.tk_pwdir.delete(0, "end") #update file name on screen post validation
+            self.tk_pwdir.insert(0, self.pwdir)
+
             if error:
                 self.tk_pwdir_msg['fg'] = "red"
             return error
@@ -318,7 +292,7 @@ class LaharZ_app(tk.Tk):
             self.tk_papex_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def get_entry_point(r):
-            self.tk_pentry_point_lbl = tk.Label(self.frame, text='Apex', font=('Helvetica', 12))
+            self.tk_pentry_point_lbl = tk.Label(self.frame, text='Centre Point', font=('Helvetica', 12))
             self.tk_pentry_point_lbl.grid(row=r, column = 0, padx = 10, columnspan=1, sticky='W')
             self.tk_pentry_point = tk.Entry(self.frame, font=('Helvetica', 12))
             self.tk_pentry_point.grid(row=r, column = 2, padx = 10, columnspan=1, sticky='W')
@@ -352,12 +326,12 @@ class LaharZ_app(tk.Tk):
             self.tk_psearch_fn_msg.grid(row=r, column = 3, padx = 10, columnspan=1, sticky='W')
        
         def search_box_size(r):
-            self.tk_psearch_box_size_lbl = tk.Label(self.frame, text='Search box size', font=('Helvetica', 12))
+            self.tk_psearch_box_size_lbl = tk.Label(self.frame, text='Search Area Size', font=('Helvetica', 12))
             self.tk_psearch_box_size_lbl.grid(row=r, column = 0, padx = 10, columnspan=1, sticky='W')
             self.tk_psearch_box_size = tk.Entry(self.frame, font=('Helvetica', 12))
             self.tk_psearch_box_size.grid(row=r, column = 2, padx = 10, columnspan=1, sticky='W')
             self.tk_psearch_box_size.insert(0, self.psearch_box_size)
-            self.tk_psearch_box_size_msg = tk.Label(self.frame, text='Search box size (m)', font=('Helvetica', 12))
+            self.tk_psearch_box_size_msg = tk.Label(self.frame, text='Search area size (m)', font=('Helvetica', 12))
             self.tk_psearch_box_size_msg.grid(row=r, column = 3, padx = 10, columnspan=1, sticky='W')
 
         def new_sf_button(r):
@@ -441,19 +415,20 @@ class LaharZ_app(tk.Tk):
             new_sf_button(55)
             
         def create_new_sf():
-            ep = Point(self.pentry_point_x, self.pentry_point_y)
+            ep = shPoint(self.pentry_point_x, self.pentry_point_y)
             d = self.psearch_box_size/2 *2**.5
             x1, y1 = lltransform([self.pentry_point_x, self.pentry_point_y], d, -135)
             x2, y2 = lltransform([self.pentry_point_x, self.pentry_point_y], d, 45)
 
             geoms = [ep, Polygon(((x1, y1), (x1, y2), (x2, y2), (x2, y1)))]
-            index = ["Apex", "Search Area"]
+            index = ["Centre", "Search Area"]
             psearch_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.psearch_fn])
 
             gds = gpd.GeoSeries(geoms, index, crs="EPSG:4326")
             gds.to_file(psearch_fn, driver="GPKG")
+            log_msg("Created new search file: " + psearch_fn, screen_op = False)
 
-            # fiona can't manage points and ploygons but can name the layer
+            # Also tried with Fiona but it can't manage points and ploygons together but can name the layer
             # schema = {
             #     'geometry': 'Point',
             #     'properties': {'label': 'str'}
@@ -461,7 +436,6 @@ class LaharZ_app(tk.Tk):
 
             # with fiona.open('Coto22/fionatest2.gpkg', 'w', driver='GPKG', crs=from_epsg(4326), schema=schema, layer='Search') as dst:
             #     dst.write({'geometry': {'type': 'Point', 'coordinates': (-78.44, -0.68)}, 'properties': {'label': "Entry Point"}})
-
 
             self.tk_pnew_sf_msg["text"] = "Search file " + self.psearch_fn + " created in " + self.pwdir
 
@@ -476,7 +450,7 @@ class LaharZ_app(tk.Tk):
             self.tk_psearch_option1.grid(row=r+1, column = 0, padx = 10, columnspan=1, sticky='W')
             self.tk_psearch_option2 = tk.Radiobutton(self.frame, text='Use Centre of Search Area', font=('Helvetica', 12), variable=self.tk_psearch_option, value='Centre')
             self.tk_psearch_option2.grid(row=r+2, column = 0, padx = 10, columnspan=1, sticky='W')
-            self.tk_psearch_option3 = tk.Radiobutton(self.frame, text='Use Point \'Apex\' from Search File', font=('Helvetica', 12), variable=self.tk_psearch_option, value='Apex')
+            self.tk_psearch_option3 = tk.Radiobutton(self.frame, text='Use Point \'Centre\'', font=('Helvetica', 12), variable=self.tk_psearch_option, value='Centre Point')
             self.tk_psearch_option3.grid(row=r+3, column = 0, padx = 10, columnspan=1, sticky='W')
             self.tk_psearch_option_msg = tk.Label(self.frame, text = '', font=('Helvetica', 12))
             self.tk_psearch_option_msg.grid(row=r+1, column = 3, padx = 10, columnspan=1, sticky='W')
@@ -535,7 +509,7 @@ class LaharZ_app(tk.Tk):
             self.tk_pec_graphics_fn = tk.Entry(self.frame, font=('Helvetica', 12))
             self.tk_pec_graphics_fn.grid(row=r, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
             self.tk_pec_graphics_fn.insert(0, self.pec_graphics_fn)
-            self.tk_pec_graphics_fn_msg = tk.Label(self.frame, text='File name for the energy cone graphics file (.tif)',font=('Helvetica', 12))
+            self.tk_pec_graphics_fn_msg = tk.Label(self.frame, text='Name of the file for the energy cone graphics in ' + self.pwdir, font=('Helvetica', 12))
             self.tk_pec_graphics_fn_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def mesh_extent(r):
@@ -667,18 +641,24 @@ class LaharZ_app(tk.Tk):
             tk.Label(self.frame, text = '', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, columnspan=1, sticky='NW')
 
             self.tk_statusmsg = tk.Label(self.frame, text = "", fg = "green", font=('Helvetica', 12))
-            self.tk_statusmsg.grid(row=r+1, column = 0, columnspan=4, sticky='W')
+            self.tk_statusmsg.grid(row=r+1, column = 0, columnspan=6, sticky='W')
 
         def validate_DEM():
             self.pdem_fn = self.tk_pdem_fn.get()
-            error, self.tk_pdem_fn_msg['text'] = validate_file_to_read(self.pdem_fn, self.pwdir, type = 'tif')
+            self.pdem_fn, error, self.tk_pdem_fn_msg['text'] = validate_file_to_read(self.pdem_fn, self.pwdir, type = 'tif')
+            self.tk_pdem_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_pdem_fn.insert(0, self.pdem_fn)
+
             if error:
                 self.tk_pdem_fn_msg['fg'] = 'red'
             return error
 
         def validate_thal():
             self.pthal_fn = self.tk_pthal_fn.get()
-            error, self.tk_pthal_fn_msg['text'] = validate_file_to_read(self.pthal_fn, self.pwdir, type = 'tif')
+            self.pthal_fn, error, self.tk_pthal_fn_msg['text'] = validate_file_to_read(self.pthal_fn, self.pwdir, type = 'tif')
+            self.tk_pthal_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_pthal_fn.insert(0, self.pthal_fn)
+
             if error:
                 self.tk_pthal_fn_msg['fg'] = 'red'
             return error
@@ -687,7 +667,10 @@ class LaharZ_app(tk.Tk):
             # Search file
             self.psearch_fn = self.tk_psearch_fn.get()
             self.tk_pnew_sf_msg['text'] = ""
-            error, self.tk_psearch_fn_msg['text'] = validate_file_to_read(self.psearch_fn, self.pwdir, type = "gpkg")
+            self.psearch_fn, error, self.tk_psearch_fn_msg['text'] = validate_file_to_read(self.psearch_fn, self.pwdir, type = "gpkg")
+            self.tk_psearch_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_psearch_fn.insert(0, self.psearch_fn)
+
             if error:
                 self.tk_psearch_fn_msg['fg'] = "red"
             return error
@@ -744,6 +727,7 @@ class LaharZ_app(tk.Tk):
             return False
 
         def validate_entry_point():
+            # can't validate if entry point is in DEM as DEM file has not been opened yet.
             error = False
             self.tk_pentry_point_msg['text'] = ""
             self.pentry_point = self.tk_pentry_point.get()
@@ -821,7 +805,7 @@ class LaharZ_app(tk.Tk):
 
             self.phlratio = self.tk_phlratio.get()
             if not sys_parms['povr_hl_ratio'][0]:
-                self.phlratio, error, self.tk_phlratio_msg['text'] = validate_numeric(self.phlratio, range = (0.2, 0.3))
+                self.phlratio, error, self.tk_phlratio_msg['text'] = validate_numeric(self.phlratio, range = (0.1, 0.3))
             else:
                 self.phlratio, error, self.tk_phlratio_msg['text'] = validate_numeric(self.phlratio, gt = 0)
 
@@ -834,9 +818,9 @@ class LaharZ_app(tk.Tk):
             self.tk_pec_graphics_fn_msg['text'] = ""
             self.pec_graphics_fn = self.tk_pec_graphics_fn.get()
             self.pecgf_ow = self.tk_ecgf_ow.get()
-            self.pec_graphics_fn, error, cancel_flag, self.tk_pec_graphics_fn_msg['text'] = validate_file_to_write(self.pec_graphics_fn, self.pwdir, self.frame, 
-                                                                                       "Energy Cone Graphics File", exists = self.pecgf_ow,
-                                                                                       extend = 'tif', type = 'tif')
+            self.pec_graphics_fn, error, cancel_flag, self.tk_pec_graphics_fn_msg['text'] = \
+                validate_file_to_write(self.pec_graphics_fn, self.pwdir, self.frame, 
+                                       "Energy Cone Graphics File", exists = self.pecgf_ow, extend = 'tif', type = 'tif')
             if error:
                 self.tk_pec_graphics_fn_msg['fg'] = "red"
             return error, cancel_flag
@@ -922,14 +906,12 @@ class LaharZ_app(tk.Tk):
                 self.pecline_fn = self.parameters['pecline_fn']
                 self.pplot_mesh = self.parameters['pplot_mesh']
                 self.pec_graphics_fn = self.parameters['pec_graphics_fn']
-                # self.pec_graphics_fn = "ec_cone.tif"
                 self.pmesh_extent = self.parameters['pmesh_extent']
                 self.psearch_fn = self.parameters['psearch_fn']
                 self.psearch_box_size = self.parameters['psearch_box_size']
                 self.psearch_option = self.parameters['psearch_option']
                 self.psf_ow = self.parameters['psf_ow']
                 self.pecgf_ow = self.parameters['pecgf_ow']
-                # self.pecgf_ow = False
                 self.pec_ow = self.parameters['pec_ow']
                 self.pip_ow = self.parameters['pip_ow']
             except:
@@ -966,14 +948,21 @@ class LaharZ_app(tk.Tk):
 
                 def op_ec_points(ec_points, ec_fn):
                     """Dumps out all points on the energy cone line for debugging"""
-                    ec_fn = os.sep.join([os.getcwd, self.pwdir, ec_fn])
-                    epcsv = csv.writer(open(ec_fn, "w", newline = ""), delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
-                    epcsv.writerow(["Label", "Longitude", "Latitude", "Row", "Column"])
-                    for i, irc in enumerate(ec_points):
-                        ll = rc2ll(irc)
-                        epcsv.writerow(["P"+str(i), ll[0], ll[1], irc[0], irc[1]])
-                    log_msg("Saving energy line to: " + ec_fn, screen_op=False)
-                    
+                    ec_fn = os.sep.join([os.getcwd(), self.pwdir, ec_fn])
+                    try:
+                        epcsv = csv.writer(open(ec_fn, "w", newline = ""), delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
+                        epcsv.writerow(["Label", "Longitude", "Latitude", "Row", "Column"])
+                        for i, irc in enumerate(ec_points):
+                            ll = rc2ll(dem_f, dem_crs, irc)
+                            epcsv.writerow(["P"+str(i), ll[0], ll[1], irc[0], irc[1]])
+                        log_msg("Saving energy line to: " + ec_fn, screen_op=False)
+                        return False
+                    except:
+                        log_msg('Saving energy line to ' + ec_fn + ' failed. Probably invalid permissions due to being locked in Excel', frame = self, errmsg = True)
+                        return True
+
+
+                        
                 def CreateEnergyConeMesh():
                     """Creates a mesh file of the energy cone"""
                     log_msg("Preparing energy cone graphics...", frame = self)
@@ -989,6 +978,8 @@ class LaharZ_app(tk.Tk):
                     min_r = ((px - min_point_yx[1]) ** 2 + (py - min_point_yx[0]) ** 2) ** 0.5
                     min_h = -min_r * phlratio + peak_height + pincremental_height
 
+                    #to do - Quicker with a clever numpy expression
+                    
                     for i in range(mesh_lc, mesh_lc + mesh_cols):  # cols
                         for j in range(mesh_lr, mesh_lr + mesh_rows):  # rows
                             x = i * dem_cell_size
@@ -1002,13 +993,18 @@ class LaharZ_app(tk.Tk):
                                 ec_v[j,i] = np.nan
 
                     log_msg("Saving cone graphics files...", frame = self)
-                    resolve_inout(overwrite=True) #forces overwrite of output file
-                    profile = dem_f.profile
-                    with rio.Env():
-                        with rio.open(pec_graphics_fn, 'w', **profile) as dst:
-                            dst.write(ec_v, 1)
-
-                    log_msg("Cone graphics written to: " + os.sep.join([os.getcwd(), pecline_fn]), screen_op = False)
+                    try:
+                        resolve_inout(overwrite=True) #forces overwrite of output file
+                        profile = dem_f.profile
+                        profile.update(dtype=rio.float32)
+                        with rio.Env():
+                            with rio.open(pec_graphics_fn, 'w', **profile) as dst:
+                                dst.write(ec_v.astype(rio.float32), 1)
+                        log_msg("Cone graphics written to: " + os.sep.join([os.getcwd(), pec_graphics_fn]), screen_op = False)
+                    except:
+                        log_msg('Saving energy cone in ' + pec_graphics_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                        return True
+                    return False
 
                 #########################################################################################################
                 log_msg("Creating Initiation Points", screen_op = False)
@@ -1062,14 +1058,13 @@ class LaharZ_app(tk.Tk):
                 thal_f, thal_crs, thal_v = LoadFile(pthal_fn)
                 if thal_v.shape != dem_v.shape or dem_crs != thal_crs:
                     log_msg("Error - mismatch in raster size and projection between DEM file ({}) and Stream file ({})".format(self.pdem_fn, self.pthal_fn), errmsg = True, frame = self)
-                    return
+                    return True
 
                 thal_v[thal_v == 65535] = 0  # set all 'NaN' values of #FFFF to zero #todo this is necessary for some outputs from GRASS r.fillnull
                 thal_v[thal_v < 0] = 0  # set all negatives to zero
                 thal_v[thal_v > 0] = 1  # set all stream numbers to 1
 
                 # Find peak
-                # Adds peak and the search box to the kml file for display in google earth
                 if len(args) !=0:
                     log_msg("Determining High Point...", frame = self)
                     search_sw_ll = args[0]
@@ -1098,7 +1093,7 @@ class LaharZ_app(tk.Tk):
                     peakll = apex
                     peakrc = ll2rc(dem_f, dem_crs, peakll)
                     if not (0 <= peakrc[0] < nrows and 0 <= peakrc[1] <= ncols):
-                        log_msg("Error: Apex is not within the DEM file", errmsg = True, frame = self)
+                        log_msg("Error: Apex or Centre Point is not within the DEM file", errmsg = True, frame = self)
                         return True
 
                     peak_height = dem_v[peakrc[0], peakrc[1]]
@@ -1115,14 +1110,22 @@ class LaharZ_app(tk.Tk):
                 if sys_parms['ecraw_fn'][0] !="":
                     ecraw_fn = os.sep.join([os.getcwd(), self.pwdir, sys_parms['ecraw_fn'][0]])
                     log_msg("Saving raw energy cone to: " + ecraw_fn, screen_op=False)
-                    SaveFile(ecraw_fn, dem_f, ecraw_v)
+                    try:
+                        SaveFile(ecraw_fn, dem_f, dem_crs, ecraw_v)
+                    except:
+                        log_msg('Saving raw energy cone in ' + ecraw_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                        return True
 
                 log_msg("Filling Energy Cone...", frame = self)
                 ecfilled_v = binary_fill_holes(ecraw_v)
                 if sys_parms['ecfilled_fn'][0] !="":
                     ecfilled_fn = os.sep.join([os.getcwd(), self.pwdir, sys_parms['ecfilled_fn'][0]])
                     log_msg("Saving filled energy cone to: " + ecfilled_fn, screen_op=False)
-                    SaveFile(ecfilled_fn, dem_f, ecfilled_v)
+                    try:
+                        SaveFile(ecfilled_fn, dem_f, dem_crs, ecfilled_v)
+                    except:
+                        log_msg('Saving filled energy cone in ' + ecfilled_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                        return True
 
                 log_msg("Generating Energy Cone Line...", frame = self)
                 ecline_v = binary_erosion(input=ecfilled_v)
@@ -1135,20 +1138,22 @@ class LaharZ_app(tk.Tk):
                 ecline_v[nrows-1, :] = 0
                 log_msg("Saving energy line to: " + pecline_fn, screen_op=False)
                 try: 
-                    SaveFile(pecline_fn, dem_f, ecline_v)
+                    SaveFile(pecline_fn, dem_f, dem_crs, ecline_v)
                 except:
                     log_msg('Saving energy line in ' + pecline_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
                     return True
 
                 # inititiation points
-                log_msg("Generating Initiation Points...", frame = self)
                 ec_points = np.argwhere(ecline_v == 1)
                 if sys_parms['ec_fn'][0] != "":
-                    op_ec_points(ec_points) #creates csv file of ec_points for debugging
+                    error = op_ec_points(ec_points, sys_parms['ec_fn'][0]) #creates csv file of ec_points for debugging
+                    if error: 
+                        return True
 
+                log_msg("Generating Initiation Points...", frame = self)
                 initrc = []
                 ip_counter = 1
-                for ii, i in enumerate(ec_points): #to allow breakpoints to be set at specific points for debugging
+                for ii, i in enumerate(ec_points):
                     # checks if the ec line and the thalweg share the same cell in the matix: if so, they cross and hence an initiation point
                     # but also checks if the lines cross in an x where they don;t share the same cell. This is done in each direction.
                     if thal_v[tuple(i)] == 1:
@@ -1189,7 +1194,7 @@ class LaharZ_app(tk.Tk):
                     initrc = np.array(initrc)
 
                     # Save initiation points in geopackage format
-                    log_msg("Saving initiation points...", frame = self)
+                    log_msg("Saving initiation points to " + pinitpoints_fn, frame = self)
                     geoms = [shPoint((peakll[0], peakll[1]))]
                     index = ["Apex"]
                     for i, irc in enumerate(initrc):
@@ -1205,15 +1210,20 @@ class LaharZ_app(tk.Tk):
 
                     if sys_parms['wipcsv'][0] != "":
                         #assumes filename has csv extension. Not verified
-                        log_msg("Saving initiation points additionally to: " + sys_parms['wipcsv'][0], screen_op = False)
-                        f_initpoints = open(sys_parms['wipcsv'][0], "w", newline = '')
-                        ipcsv = csv.writer(f_initpoints, delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
-                        ipcsv.writerow(["Label", "Longitude", "Latitude", "Number", "Row", "Column"])
-                        ipcsv.writerow(["Peak", peakll[0], peakll[1], "", peakrc[0], peakrc[1]])
+                        pwipcsv = os.sep.join([os.getcwd(), self.pwdir, sys_parms['wipcsv'][0]])
+                        log_msg("Saving initiation points additionally to: " + pwipcsv, screen_op = False)
+                        try:
+                            f_initpoints = open(pwipcsv, "w", newline = '')
+                            ipcsv = csv.writer(f_initpoints, delimiter=',', dialect="excel", quoting=csv.QUOTE_MINIMAL)
+                            ipcsv.writerow(["Label", "Longitude", "Latitude", "Number", "Row", "Column"])
+                            ipcsv.writerow(["Apex", peakll[0], peakll[1], "", peakrc[0], peakrc[1]])
 
-                        for i, irc in enumerate(initrc):
-                            ll = rc2ll(dem_f, dem_crs, irc[1:3])  # this programme uses long, lat to match x,y directions. Presented as Lat, Long in all output
-                            ipcsv.writerow(["IP{:02d}".format(irc[0]), ll[0], ll[1], irc[0], irc[1], irc[2]])
+                            for i, irc in enumerate(initrc):
+                                ll = rc2ll(dem_f, dem_crs, irc[1:3])  # this programme uses long, lat to match x,y directions. Presented as Lat, Long in all output
+                                ipcsv.writerow(["IP{:02d}".format(irc[0]), ll[0], ll[1], irc[0], irc[1], irc[2]])
+                        except:
+                            log_msg('Saving initiation points to ' + pwipcsv + ' failed. Probably invalid permissions due to being locked in Excel', frame = self, errmsg = True)
+                            return True
 
                 if pplot_mesh:
 
@@ -1236,11 +1246,13 @@ class LaharZ_app(tk.Tk):
                         mesh_rows = mesh_ur - mesh_lr + 1
                         mesh_cols = mesh_uc - mesh_lc + 1
 
-                    CreateEnergyConeMesh()
-                    if len(initrc) == 0:
-                        log_msg('No initiation points found. Energy cone graphic will have been created if requested.', frame = self, errmsg = True)
+                    error = CreateEnergyConeMesh()
+                    if error:
                         return True
-                    return False
+                if len(initrc) == 0:
+                    log_msg('No initiation points found. Energy cone graphic will have been created if requested.', frame = self, errmsg = True)
+                    return True
+                return False
 
             #############################################################################################                    
 
@@ -1258,7 +1270,7 @@ class LaharZ_app(tk.Tk):
                     found = False
                     i = 0
                     while i < len(s_f['index']) and not found:
-                        if s_f['index'][i] == "Search Area":
+                        if s_f['index'][i] == "Search Area" and not s_f.isna()['geometry'][i]:
                             found = True
                         else:
                             i += 1
@@ -1266,12 +1278,16 @@ class LaharZ_app(tk.Tk):
                         bounds = s_f['geometry'][i].bounds # minx, miny, maxx, maxy
                         error = create_ips([mean([bounds[0], bounds[2]]), mean([bounds[1], bounds[3]])], bounds[0:2], bounds[2:4]) #centre x, centre y, sw, ne
                         return error
-                    
+                    else:
+                        log_msg("Error: Search Area not found in search file " + self.psearch_fn, frame = self, errmsg = True)
+                        return True
+
+
                 elif psearch_option == "Centre":
                     found = False
                     i = 0
                     while i < len(s_f['index']) and not found:
-                        if s_f['index'][i] == "Search Area":
+                        if s_f['index'][i] == "Search Area" and not s_f.isna()['geometry'][i]:
                             found = True
                         else:
                             i += 1
@@ -1280,14 +1296,14 @@ class LaharZ_app(tk.Tk):
                         error = create_ips([mean([bounds[0], bounds[2]]), mean([bounds[1], bounds[3]])])
                         return error
                     else:
-                        self.tk_statusmsg = "Error: Search Area not found in search file " + self.psearch_fn
+                        log_msg("Error: Search Area not found in search file " + self.psearch_fn, frame = self, errmsg = True)
                         return True
 
-                elif psearch_option == "Apex":
+                elif psearch_option == "Centre Point":
                     found = False
                     i = 0
                     while i < len(s_f['index']) and not found:
-                        if s_f['index'][i] == "Apex":
+                        if s_f['index'][i] == "Centre" and not s_f.isna()['geometry'][i]:
                             found = True
                         else:
                             i += 1
@@ -1295,7 +1311,7 @@ class LaharZ_app(tk.Tk):
                         error = create_ips([s_f['geometry'][i].x, s_f['geometry'][i].y ])
                         return error
                     else:
-                        self.tk_statusmsg = "Error: Apex not found in search file " + self.psearch_fn
+                        log_msg("Error: Centre point not found in search file " + self.psearch_fn, frame = self, errmsg = True)
                         return True
                 return False
 
@@ -1444,14 +1460,6 @@ class LaharZ_app(tk.Tk):
             self.tk_pc1_value_msg = tk.Label(self.frame, text='Value of the c1 parameter', font=('Helvetica', 12))
             self.tk_pc1_value_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
-        def p1_value(r):
-            tk.Label(self.frame, text='p1 value', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pp1_value = tk.Entry(self.frame, font=('Helvetica', 12))
-            self.tk_pp1_value.grid(row=r, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pp1_value.insert(0, self.pp1_value)
-            self.tk_pp1_value_msg = tk.Label(self.frame, text='Value of the p1 parameter', font=('Helvetica', 12))
-            self.tk_pp1_value_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
-
         def c2_value(r):
             tk.Label(self.frame, text='Planar Area', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
             tk.Label(self.frame, text='c\u2082', font=('Helvetica', 16)).grid(row=r, column = 1, padx = 10, pady = 3, columnspan=1, sticky='W')
@@ -1460,14 +1468,6 @@ class LaharZ_app(tk.Tk):
             format_c2()
             self.tk_pc2_value_msg = tk.Label(self.frame, text='Value of the c2 parameter', font=('Helvetica', 12))
             self.tk_pc2_value_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
-
-        def p2_value(r):
-            tk.Label(self.frame, text='p2 Value', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pp2_value = tk.Entry(self.frame, font=('Helvetica', 12))
-            self.tk_pp2_value.grid(row=r, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pp2_value.insert(0, self.pp2_value)
-            self.tk_pp2_value_msg = tk.Label(self.frame, text='Value of the B parameter', font=('Helvetica', 12))
-            self.tk_pp2_value_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def display_formula(r):
             tk.Label(self.frame, text='', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
@@ -1504,7 +1504,10 @@ class LaharZ_app(tk.Tk):
 
         def validate_DEM():
             self.pdem_fn = self.tk_pdem_fn.get()
-            error, self.tk_pdem_fn_msg['text'] = validate_file_to_read(self.pdem_fn, self.pwdir, type = 'tif')
+            self.pdem_fn, error, self.tk_pdem_fn_msg['text'] = validate_file_to_read(self.pdem_fn, self.pwdir, type = 'tif')
+            self.tk_pdem_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_pdem_fn.insert(0, self.pdem_fn)
+
             if error:
                 self.tk_pdem_fn_msg['fg'] = 'red'
             return error
@@ -1521,14 +1524,20 @@ class LaharZ_app(tk.Tk):
 
         def validate_flow():
             self.pflow_fn = self.tk_pflow_fn.get()
-            error, self.tk_pflow_fn_msg['text'] = validate_file_to_read(self.pflow_fn, self.pwdir, type = 'tif')
+            self.pflow_fn,error, self.tk_pflow_fn_msg['text'] = validate_file_to_read(self.pflow_fn, self.pwdir, type = 'tif')
+            self.tk_pflow_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_pflow_fn.insert(0, self.pflow_fn)
+
             if error:
                 self.tk_pflow_fn_msg['fg'] = 'red'
             return error
 
         def validate_initiationpoints():
             self.pinitpoints_fn = self.tk_pinitpoints_fn.get()
-            error, self.tk_pinitpoints_fn_msg['text'] = validate_file_to_read(self.pinitpoints_fn, self.pwdir, type = 'gpkg')
+            self.pinitpoints_fn, error, self.tk_pinitpoints_fn_msg['text'] = validate_file_to_read(self.pinitpoints_fn, self.pwdir, type = 'gpkg')
+            self.tk_pinitpoints_fn.delete(0, "end") #update file name on screen post validation
+            self.tk_pinitpoints_fn.insert(0, self.pinitpoints_fn)
+
             if error:
                 self.tk_pinitpoints_fn_msg['fg'] = 'red'
             return error
@@ -1585,7 +1594,10 @@ class LaharZ_app(tk.Tk):
             self.tk_plahar_dir_msg['text'] = ""
             self.pld_ow = self.tk_ld_ow.get()
             self.plahar_dir = self.tk_plahar_dir.get()
-            error, cancel_flag, self.tk_plahar_dir_msg['text'] = validate_dir_to_write(self.plahar_dir, self.pwdir, self.frame, "Lahar Directory", exists = self.pld_ow)
+            self.plahar_dir, error, cancel_flag, self.tk_plahar_dir_msg['text'] = validate_dir_to_write(self.plahar_dir, self.pwdir, self.frame, "Lahar Directory", exists = self.pld_ow)
+            self.tk_plahar_dir.delete(0, "end") #update file name on screen post validation
+            self.tk_plahar_dir.insert(0, self.plahar_dir)
+
             if error:
                 self.tk_plahar_dir_msg['fg'] = "red"
             return error, cancel_flag
@@ -1617,8 +1629,9 @@ class LaharZ_app(tk.Tk):
                 frame1.columnconfigure(0, weight = 1)
                 frame1.rowconfigure(0, weight = 1)
                 frame1.grid(row = 0, column = 0, padx = 10, sticky=tk.NSEW)
+                pscenario = self.tk_pscenario.get()
 
-                tk.Label(frame1, text="Lahars created", font=('Helvetica', 12, 'bold')).grid(row=10, column = 0, padx = 10, columnspan=2, sticky='W')
+                tk.Label(frame1, text=pscenario + " Flows created", font=('Helvetica', 12, 'bold')).grid(row=10, column = 0, padx = 10, columnspan=2, sticky='W')
 
                 tk_proceed_button = tk.Button(frame1, text="Continue", font=('Helvetica', 12), command = lambda : proceed.set(True))
                 tk_proceed_button.grid(row=30, column = 0, padx = 10, pady = 20, columnspan=1)
@@ -1701,6 +1714,8 @@ class LaharZ_app(tk.Tk):
                 self.pflow_fn = self.parameters['pflow_fn']
                 self.pvolume = self.parameters['pvolume']
                 self.pscenario = self.parameters['pscenario']
+                if self.pscenario not in sys_parms['pscenario_values'][0]:
+                    self.pscenario = "Lahar"
                 self.pc1_value = self.parameters['pc1_value']
                 self.pc2_value = self.parameters['pc2_value']
                 self.psea_level = self.parameters['psea_level']
@@ -1744,9 +1759,9 @@ class LaharZ_app(tk.Tk):
                         c3 = min(c1 + c2, ncols - 1)
                         c3 = max(c3, 0)  # in case of addition of negitive amount
                         if r1 + r2 > nrows - 1 or r1 + r2 < 0:
-                            log_msg("Warning: potential overflow as {} is added to row {}".format(r2, r1))
+                            log_msg("Warning: potential overflow as {} is added to row {}".format(r2, r1), screen_op=False)
                         if c1 + c2 > ncols - 1 or c1 + c2 < 0:
-                            log_msg("Warning: potential overflow as {} is added to column {}".format(c2, c1))
+                            log_msg("Warning: potential overflow as {} is added to column {}".format(c2, c1), screen_op=False)
                     else:
                         r3 = r1 + r2
                         c3 = c1 + c2
@@ -1763,9 +1778,9 @@ class LaharZ_app(tk.Tk):
                         c3 = max(c1 - c2, 0)
                         c3 = min(c3, ncols - 1)
                         if r1 - r2 > nrows - 1 or r1 - r2 < 0:
-                            log_msg("Warning: potential overflow as {} is subtracted from row {}".format(r2, r1))
+                            log_msg("Warning: potential overflow as {} is subtracted from row {}".format(r2, r1), screen_op=False)
                         if c1 - c2 > ncols - 1 or c1 - c2 < 0:
-                            log_msg("Warning: potential overflow as {} is subtracted from column {}".format(c2, c1))
+                            log_msg("Warning: potential overflow as {} is subtracted from column {}".format(c2, c1), screen_op=False)
                     else:
                         r3 = r1 - r2
                         c3 = c1 - c2
@@ -1799,14 +1814,18 @@ class LaharZ_app(tk.Tk):
                             # anchor
                             # t - top, m - middle, b - bottom
                             # l = left, c = centre, r = right
-                            # assumes x,y origin of image in bottom left corner and the inversion to top left corner is handled elsewhere
-                            wl, wr, wt, wb = font.getbbox(msg)
+                            wl, wt, wr, wb = font.getbbox(msg)
                             wt, ht = wr-wl, wb-wt
 
                             if anchor[0] == 't':
                                 ht = 0
-                            elif anchor == "m":
+                            elif anchor[0] == "m":
                                 ht = ht / 2
+                            elif anchor[0] == 'a': #above
+                                ht = y - ht - 1
+                            elif anchor[0] == 'b': #above
+                                ht = ht
+
                             if anchor[1] == 'l':
                                 wt = 0
                             elif anchor[1] == "c":
@@ -1872,39 +1891,41 @@ class LaharZ_app(tk.Tk):
                         p = p_neg
                         for i in range(ncells):
                             # draw ground
-                            xsw = int(i * ww) + pborder
-                            xne = int((i + 1) * ww) - 1 + pborder
-                            ysw = pheight - pborder
-                            yne = pheight - (int((dem_v[p.vector()] - minh) * hh) + pgborder + pborder)
-                            draw1.rectangle([(xsw, ysw), (xne, yne)], fill='#548235')
-                            draw1.line([(xsw, ysw), (xsw, yne), (xne, yne), (xne, ysw), xsw, ysw], fill='#000000')
+                            xnw = int(i * ww) + pborder
+                            xse = int((i + 1) * ww) - 1 + pborder
+                            yse = pheight - pborder
+                            ynw = pheight - (int((dem_v[p.vector()] - minh) * hh) + pgborder + pborder)
+                            draw1.rectangle([(xnw, ynw), (xse, yse)], fill='#548235')
+                            draw1.line([(xse, yse), (xnw, yse), (xnw, ynw), (xse, ynw), xse, yse], fill='#000000')
 
-                            PlotMsg("R:{} C:{}".format(p.vector()[0], p.vector()[1]), (xsw + xne) / 2, ysw + 1, "tc", "#FFFFFF")
-                            PlotMsg("Elev:{}".format(dem_v[p.vector()]), (xsw + xne) / 2, yne + 1, "tc", "#FFFFFF")
+                            PlotMsg("R:{} C:{}".format(p.vector()[0], p.vector()[1]), (xse + xnw) / 2, yse + 1, "tc", "#FFFFFF")
+                            PlotMsg("Elev:{:.2f}".format(dem_v[p.vector()]), (xse + xnw) / 2, ynw + 1, "tc", "#FFFFFF")
 
                             # draw lahar
                             if innund[p.vector()] and i in range(2, ncells - 2):
                                 xsecarea += (level - dem_v[p.vector()]) * dist
-                                xsw = int(i * ww) + pborder
-                                xne = int((i + 1) * ww) - 1 + pborder
-                                ysw = pheight - (int((dem_v[p.vector()] - minh) * hh) + pgborder + pborder)
-                                yne = pheight - (int((level - minh) * hh) + pgborder + pborder)
-                                draw1.rectangle([(xsw, ysw), (xne, yne)], fill='#8C3838')
-                                draw1.line([(xsw, ysw), (xsw, yne), (xne, yne), (xne, ysw), (xsw, ysw)], fill='#000000')
-                                if p == pathpoint:
-                                    PlotMsg("Level:{}".format(level), (xsw + xne) / 2, yne + 1, "tc", "#FFFFFF")
+                                # xnw = int(i * ww) + pborder
+                                # xse = int((i + 1) * ww) - 1 + pborder
+                                yse = pheight - (int((dem_v[p.vector()] - minh) * hh) + pgborder + pborder)
+                                ynw = pheight - (int((level - minh) * hh) + pgborder + pborder)
+                                draw1.rectangle([(xnw, ynw), (xse, yse)], fill='#8C3838')
+                                draw1.line([(xse, yse), (xnw, yse), (xnw, ynw), (xse, ynw), (xse, yse)], fill='#000000')
+                                lf = True
 
                             # draw sky - assumes cordinates from either ground or lahar
-                            ysw = yne
-                            yne = pheight - (pheight - pborder)
-                            draw1.rectangle([(xsw, ysw), (xne, yne)], fill='#7DF5FB')
-                            draw1.line([(xsw, ysw), (xsw, yne), (xne, yne), (xne, ysw), (xsw, ysw)], fill='#000000')
+                            yse = ynw + 1
+                            ynw = pheight - (pheight - pborder)
+                            draw1.rectangle([(xnw, ynw), (xse, yse)], fill='#7DF5FB')
+                            draw1.line([(xse, yse), (xnw, yse), (xnw, ynw), (xse, ynw), (xse, yse)], fill='#000000')
+                            if p == pathpoint and lf:
+                                PlotMsg("Level:{:.2f}".format(level), (xnw + xse) / 2, yse-4, "bc", "#000000")
 
                             p = p.plus(inc, "N")
 
                         PlotMsg("Cross Sectional Area Calculated: {:.2f} Cross Sectional Area Limit: {:.2f} Cell width: {:.2f}".format(xsecarea, xsec_area_limit, dist), pborder, pheight - (pheight - 10), "tl",
                                 "#FFFFFF")
                         fn = "Point P{} R{}-C{}-{}".format(seq, pathpoint.vector()[0], pathpoint.vector()[1], direction)
+                        log_msg("Cross sectional graphic created for Point P{} R{}-C{}-{}".format(seq, pathpoint.vector()[0], pathpoint.vector()[1], direction), frame = self)
                         img.save(os.sep.join([pcrosssec_area_dir, fn + '.png']))
                         img.close
                     
@@ -1943,9 +1964,9 @@ class LaharZ_app(tk.Tk):
                                 neg_vect = lhpoint([-1, -1])
                                 inc_dist = 2 ** 0.5 * dem_cell_size
 
-                            dy = 1
+                            dy = sys_parms['dy'][0]
                             dist = inc_dist
-                            xsec_area = inc_dist + dy
+                            xsec_area = inc_dist * dy
                             level = dem_v[pathpoint.vector()] + dy  # initial level of flow
                             p_pos = pathpoint  # set both points to the initial path point
                             p_neg = pathpoint  # set both points to the initial path point
@@ -1988,8 +2009,11 @@ class LaharZ_app(tk.Tk):
                 plan_area_limit = float(self.pc2_value) * v ** (2 / 3)  # Planimetric area in m2
                 dy = 1  # Increment of elevation in m
 
-                if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
-                    xseccsv = csv.writer(open(sys_parms['pxsec_fn'][0], "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
+                plotcsv = False
+                if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] \
+                    and v == sys_parms['pplotvol'][0] and sys_parms['pxsec_fn'][0] != "":
+                    plotcsv = True
+                    xseccsv = csv.writer(open(os.sep.join([pcrosssec_area_dir, sys_parms['pxsec_fn'][0]]), "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
                     xseccsv.writerow(["Point", "Latitude", "Longitude", "Row", "Col"])
 
                 innund = np.zeros_like(dem_v)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
@@ -2018,9 +2042,7 @@ class LaharZ_app(tk.Tk):
                             "Possibly this is because the point is at the very edge of the DEM. Terminating".format(current_point.vector(), flow_direction), screen_op = False)
                         sys.exit()
 
-                    if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
-
-                         
+                    if plotcsv:
                         ipll = rc2ll(dem_f, dem_crs, (current_point.vector()[0], current_point.vector()[1]))
                         xseccsv.writerow(["P{:02d}".format(point_number), ipll[1], ipll[0], current_point.vector()[0], current_point.vector()[1]])
 
@@ -2032,14 +2054,14 @@ class LaharZ_app(tk.Tk):
                     if flow_direction == 3 and dem_v[current_point.plus(lhpoint([0, -1])).vector()] > self.psea_level:
                         seq += "+W"
                         plan_area, innund = EvalPoint(current_point.plus(lhpoint([0, -1])), plan_area)
-                        if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
+                        if plotcsv:
                             ipll = rc2ll(dem_f, dem_crs, (current_point.plus(lhpoint([0, -1])).vector()))
                             xseccsv.writerow(["P{:02d}W".format(point_number), ipll[1], ipll[0], current_point.plus(lhpoint([0, -1])).vector()[0], current_point.plus(lhpoint([0, -1])).vector()[1]])
                     # if flowing SW, evaluate 1 point below (South) - note that the DEM is inverted hence the vector for south is 1,0 rather than -1,0
                     elif flow_direction == 5 and dem_v[current_point.plus(lhpoint([1, 0])).vector()] > self.psea_level:
                         seq += "+S"
                         plan_area, innund = EvalPoint(current_point.plus(lhpoint([1, 0])), plan_area)
-                        if sys_parms['pplotxsecarea'] and ip[0] == sys_parms['pplotip'] and v == sys_parms['pplotvol'][0]:
+                        if plotcsv:
                             ipll = rc2ll(dem_f, dem_crs, (current_point.plus(lhpoint([1, 0])).vector()))
                             xseccsv.writerow(["P{:02d}S".format(point_number), ipll[1], ipll[0], current_point.plus(lhpoint([1, 0])).vector()[0], current_point.plus(lhpoint([1, 0])).vector()[1]])
 
@@ -2047,7 +2069,7 @@ class LaharZ_app(tk.Tk):
                     elif flow_direction == 7 and dem_v[current_point.plus(lhpoint([0, 1])).vector()] > self.psea_level:
                         seq += "+E"
                         plan_area, innund = EvalPoint(current_point.plus(lhpoint([0, 1])), plan_area)
-                        if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
+                        if plotcsv:
                             ipll = rc2ll(dem_f, dem_crs, (current_point.plus(lhpoint([0, 1])).vector()))
                             xseccsv.writerow(["P{:02d}E".format(point_number), ipll[1], ipll[0], current_point.plus(lhpoint([0, 1])).vector()[0], current_point.plus(lhpoint([0, 1])).vector()[1]])
 
@@ -2055,7 +2077,7 @@ class LaharZ_app(tk.Tk):
                     elif flow_direction == 1 and dem_v[current_point.plus(lhpoint([-1, 0])).vector()] > self.psea_level:
                         plan_area, innund = EvalPoint(current_point.plus(lhpoint([-1, 0])), plan_area)
                         seq += "+N"
-                        if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
+                        if plotcsv:
                             ipll = rc2ll(dem_f, dem_crs,(current_point.plus(lhpoint([-1, 0])).vector()))
                             xseccsv.writerow(["P{:02d}N".format(point_number), ipll[1], ipll[0], current_point.plus(lhpoint([-1, 0])).vector()[0], current_point.plus(lhpoint([-1, 0])).vector()[1]])
 
@@ -2149,16 +2171,23 @@ class LaharZ_app(tk.Tk):
             pflow_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pflow_fn])
             flowdir_f, flowdir_crs, flowdir_v = LoadFile(pflow_fn)
             if flowdir_v.shape != dem_v.shape or dem_crs != flowdir_crs:
-                log_msg("Error - mismatch in raster size and projection between DEM file ({}) and Flow Direction file ({})".format(self.pdem_fn, self.pflow_fn), errmsg = True, frame = self)
+                log_msg("Error: mismatch in raster size and projection between DEM file ({}) and Flow Direction file ({})".format(self.pdem_fn, self.pflow_fn), errmsg = True, frame = self)
                 return True
 
             log_msg("Loading Initiation Points...", frame = self)
       
             # read from csv
             if sys_parms['ripcsv'][0] != "":
-                ipload = open(sys_parms['ripcsv'][0], newline='')
-                ipreader = csv.reader(ipload)
-                ipdata = list(ipreader)
+                log_msg("Points loaded from csv file: " + sys_parms['ripcsv'][0] + " in " + os.sep.join([os.getcwd(), self.pwdir]), screen_op = False)
+                try:
+                    ipload = open(os.sep.join([os.getcwd(), self.pwdir, sys_parms['ripcsv'][0]]), newline='')
+                    ipreader = csv.reader(ipload)
+                    ipdata = list(ipreader)
+                except:
+                    log_msg("Error: attempting to load initation points from {} in {} but file unavailable. Possibly locked in another application (eg Excel) ". \
+                            format(sys_parms['ripcsv'][0], os.sep.join([os.getcwd(), self.pwdir])), errmsg = True, frame = self)
+                    return True
+
                 # if ipload.ndim == 1: # a single line is enumerated by element rather than by line
                 #     ipload = np.reshape(ipload, (1, ipload.size))
                 ips = []
@@ -2170,15 +2199,16 @@ class LaharZ_app(tk.Tk):
                         else:
                             # file is sequenced latitude and longitude for presentation consistency. The programme uses
                             # longitude and latitude to align to x,y axis. Hence the order read in needs to be reversed.
-                            r_in, c_in = ll2rc([float(line[2]), float(line[1])])
+                            r_in, c_in = ll2rc(dem_f, dem_crs, [float(line[1]), float(line[2])])
                         if 0 <= r_in < nrows and 0 <= c_in < ncols:
                             ips.append([line[0], r_in, c_in, line[2], line[1]])
                         else:
-                            log_msg("Warning: Point {} ignored as it is outside the DEM file".format(line[2]), screen_op = False)
+                            log_msg("Warning: Point {} ignored as it is outside the DEM file".format(line[0]), screen_op = False)
 
             else:
                 #read from gpkg
                 pinitpoints_fn = os.sep.join([os.getcwd(), self.pwdir, self.pinitpoints_fn])
+                log_msg("Points loaded from gpkg file: " + pinitpoints_fn, screen_op = False)
                 d = gpd.GeoDataFrame.from_file(pinitpoints_fn)
                 ips = []
                 for i, g in zip(d['index'], d['geometry']): 
@@ -2188,40 +2218,40 @@ class LaharZ_app(tk.Tk):
                             if 0 <= r_in < nrows and 0 <= c_in < ncols:
                                 ips.append([i, r_in, c_in, g.x, g.y])
                             else:
-                                log_msg("Warning: Point {} ignored as it is outside the DEM file".format(line[2]), screen_op = False)
+                                log_msg("Warning: Point {} ignored as it is outside the DEM file".format(i), screen_op = False)
 
             if len(ips)> 0:
 
                 # Calculate Lahars
-                log_msg("Generating Lahars...", frame = self)
+                log_msg("Generating Flows...", frame = self)
                 innund_total_v = np.zeros_like(dem_v)  # array for total innundations
                 for v1, v in enumerate(self.pvolume_value):
                     innund_vol_v = np.zeros_like(dem_v)  # array for all innundations for a particular volume
 
                     for i, ip in enumerate(ips):
-                        log_msg("Generating Lahar. Initiation Point: {}/{}   Volume: {:.2e} {}/{} ".format(i + 1, len(ips), v, v1 + 1, len(self.pvolume_value)), frame = self)
+                        log_msg("Generating Flow. Initiation Point: {}/{}   Volume: {:.2e} {}/{} ".format(i + 1, len(ips), v, v1 + 1, len(self.pvolume_value)), frame = self)
                         innund_v = gen_lahar(v, ip)
 
                         ofn = "{}-V{:.2e}".format(ip[0], v).replace("+", "").replace(".", "-")
-                        log_msg("{} Latitude: {} Longitude: {} Row: {} Column: {} Volume: {} Filename: {}".format(ip[0], ip[4], ip[3], ip[1], ip[2], v, ofn), screen_op=False)  # todo file extension?
+                        log_msg("Created flow at {} Latitude: {} Longitude: {} Row: {} Column: {} Volume: {} Filename: {}".format(ip[0], ip[4], ip[3], ip[1], ip[2], v, ofn), screen_op=False)  # todo file extension?
 
                         ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
                         log_msg("Writing : {}".format(ofn), screen_op=False)
-                        SaveFile(ofn, dem_f, innund_v)
+                        SaveFile(ofn, dem_f, dem_crs, innund_v)
                         innund_vol_v = np.where(innund_vol_v == 0, innund_v * (i+1), innund_vol_v)  # add innundation for one initiation point and volume to the overall volume array
 
                     # save overall volume file
                     ofn = "V{:.2e}".format(v).replace("+", "").replace(".", "-")
                     ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
                     log_msg("Writing : {}".format(ofn, ), screen_op=False)
-                    SaveFile(ofn, dem_f, innund_vol_v)
+                    SaveFile(ofn, dem_f, dem_crs, innund_vol_v)
                     innund_total_v = np.where(innund_total_v == 0, (innund_vol_v > 0) * (v1 + 1), innund_total_v)  # add volume innundation to the total innundation
 
                 # save total innundation array
                 ofn = "Total"
                 ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
                 log_msg("Writing : {}".format(ofn, ), screen_op=False)
-                SaveFile(ofn, dem_f, innund_total_v)
+                SaveFile(ofn, dem_f, dem_crs, innund_total_v)
                 log_msg("Finished", frame = self)
                 return False
             else:
@@ -2285,10 +2315,10 @@ def validate_file_to_write(fn_in, dir, frame, ovr_msg, **kwargs):
     # exists: True to test if file already exists; asks for confirmation of the overwrite
 
     def press_overwrite():
-        nonlocal error, error_msg, cancel_flag
+        nonlocal error, error_msg, cancel_flag, fnp
         try:
-            f = open(fn, "w")
-            f.close()
+            # f = open(fnp, "a")
+            # f.close()
             error = False
             error_msg = ""
             cancel_flag = False
@@ -2308,7 +2338,8 @@ def validate_file_to_write(fn_in, dir, frame, ovr_msg, **kwargs):
         proceed.set(True)
 
     #test if follows the format ######.###
-    fn = fn_in.split(".")
+    
+    fn = fn_in.strip().split(".") #removes leading and trailing spaces
     if not 0 < len(fn) <= 2:
         return fn_in, True, False, "Error: Invalid file name"
     
@@ -2383,18 +2414,20 @@ def validate_file_to_write(fn_in, dir, frame, ovr_msg, **kwargs):
                         i[0].configure(state=i[1])
                 #remove pop up
                 po_toplvl.destroy()
-
-                return fn_in, error, cancel_flag, error_msg
+                if cancel_flag:
+                    return fn_in, error, cancel_flag, error_msg
+                else:
+                    return fn, error, cancel_flag, error_msg
 
     return fn, False, False, ""
 
-def validate_dir_to_write(dir, wdir, frame, ovr_msg, **kwargs):
+def validate_dir_to_write(dir_in, wdir, frame, ovr_msg, **kwargs):
 
     # kwargs
     # exists: True to test if dir already exists
 
     def press_overwrite():
-        nonlocal error, error_msg, cancel_flag
+        nonlocal error, error_msg, cancel_flag, dir
 
         error = False
         error_msg = ""
@@ -2402,12 +2435,14 @@ def validate_dir_to_write(dir, wdir, frame, ovr_msg, **kwargs):
 
         files = [f for f in os.listdir(dir_path) if os.path.isfile(os.path.join(dir_path, f))]
         for fname in files:
+            fname_path = os.sep.join([dir_path, fname])
             try:
-                f1 = open(fname, "w")
-                f1.close()
+                # f1 = open(fname_path, "a")
+                # f1.close()
+                pass
             except: #maybe to use OSError as eception type
                 error = True
-                error_msg = "Error: Files in directory unavailable - possibly locked in another application (eg QGIS)"
+                error_msg = "Error: Files in directory {} unavailable - possibly locked in another application (eg QGIS)".format(dir)
 
         proceed.set(True)
 
@@ -2419,12 +2454,12 @@ def validate_dir_to_write(dir, wdir, frame, ovr_msg, **kwargs):
         proceed.set(True)
 
     #test valid characters
-
+    dir = dir_in.strip()
     if dir == "":
-        return True, False, "Error: Directory not specified"
+        return dir, True, False, "Error: Directory not specified"
     
     if not(all([x in sys_parms['ok_chars'][0] for x in dir])):
-        return True, False, "Error: Invalid characters in directory name"
+        return dir, True, False, "Error: Invalid characters in directory name"
     
     # test if already exists
     if 'exists' in kwargs:
@@ -2479,30 +2514,35 @@ def validate_dir_to_write(dir, wdir, frame, ovr_msg, **kwargs):
                 #remove pop up
                 po_toplvl.destroy()
 
-                return error, cancel_flag, error_msg
+                if cancel_flag:
+                    return dir_in, error, cancel_flag, error_msg
+                else:
+                    return dir, error, cancel_flag, error_msg
 
-    return False, False, ""
+    return dir, False, False, ""
 
-def validate_file_to_read(fn, dir, **kwargs):
+def validate_file_to_read(fn_in, dir, **kwargs):
+    fn = fn_in.strip()
     fnp = os.sep.join([os.getcwd(), dir, fn])
     if not os.path.isfile(fnp):
-        return True, "Error: File does not exist in directory " + dir
+        return fn, True, "Error: File does not exist in directory " + dir
     
     if 'type' in kwargs:
         exten = fn.split(".")[1]
         if kwargs['type'] != exten:
-            return True, "Error: Only files with extension " + kwargs['type']
+            return fn, True, "Error: Only files with extension " + kwargs['type']
 
-    return False, ""
+    return fn, False, ""
 
-def validate_dir_to_read(dir):
+def validate_dir_to_read(dir_in):
+    dir = dir_in.strip()
     if dir == "":
-        return True, "Error: Enter a valid sub directory in  " + os.getcwd()
+        return dir, True, "Error: Enter a valid sub directory in  " + os.getcwd()
     dirp = os.sep.join([os.getcwd(), dir])
     if not os.path.isdir(dirp):
-        return True, "Error: Directory does not exist in  " + os.getcwd()
+        return dir, True, "Error: Directory does not exist in  " + os.getcwd()
     
-    return False, ""
+    return dir, False, ""
 
 def validate_numeric(value, **kwargs):
     if 'zero' in kwargs:
@@ -2533,7 +2573,7 @@ def LoadFile(fn):
         sys.exit() #shouldnt happen
 
     if fn[-3:] == "txt" or fn[-3] == "asc":  # ascii file
-        fcrs = pj.Proj(sys_parms['ptextcrs'][0])
+        fcrs = pj.Proj("EPSG:4326")
     elif fn[-3:] == "tif":  # tif file
         fcrs = pj.Proj(f.crs)
     else:
@@ -2544,7 +2584,7 @@ def LoadFile(fn):
 
     return f, fcrs, v
 
-def SaveFile(fn, ref_f, v):
+def SaveFile(fn, ref_f, ref_crs, v):
     """ Saves a matrix as a .tif file, an Ascii file (.txt) or a .csv file"""
     # Although possible to save an as Ascii file there seems no particular reason to do so. Savingg as a csv file is convenient
     # for debugging. Recommend that the file is saved as a .tif file
@@ -2556,17 +2596,17 @@ def SaveFile(fn, ref_f, v):
         resolve_inout(overwrite=True)
         profile = ref_f.profile
         # profile.update(dtype=rio.uint8, count=1, compress='lzw', nodata = 255)
-        profile.update(dtype=rio.uint8, count=1, nodata=255)
+        profile.update(dtype=rio.uint16, nodata = 0)
         with rio.Env():
             with rio.open(fn + ".tif", 'w', **profile) as dst:
-                dst.write(v.astype(rio.uint8), 1)
+                dst.write(v.astype(rio.uint16), 1)
     if sys_parms['pwriteascii'][0]:
         f = open(fn + ".txt", "w")
         f.write("ncols " + str(v.shape[1]) + "\n")
         f.write("nrows " + str(v.shape[0]) + "\n")
         row = col = 0
         east, north = ref_f.xy(row, col, offset='ll')  # spatial --> image coordinates
-        lon, lat = dem_crs(east, north, inverse=True)
+        lon, lat = ref_crs(east, north, inverse=True)
         f.write("xllcorner " + str(lon) + "\n")
         f.write("yllcorner " + str(lat) + "\n")
         f.write("cellsize " + str(ref_f.transform[0]) + "\n")
@@ -2601,30 +2641,33 @@ def ll2rc(f, crs, ll):
 def load_sys_parms():
     try:
         sys_parms = pickle.load(open(os.sep.join([os.getcwd(), "sys_parameters.pickle"]), "rb"))
+        # sys_parms['dy'] = [float(1), "Height increment", "Height increment used to calculate flows"]
+        # pickle.dump(sys_parms, open(os.sep.join([os.getcwd(), "sys_parameters.pickle"]), "wb"))
+
     except:
         #Initiation Points
         sys_parms = {}
         # ['variable value', 'label', 'description']
-        sys_parms['log_file_name'] = ['log', 'Log file', "Name of the text file for the log file. Should be *.txt"]
-        sys_parms['single_log_file'] = [False, 'Use single log file', 'Check to use a single log file. \
-                                        Unchecked will create a log file for each run, suffixed by date-time']
+        sys_parms['log_file_name'] = ['log', 'Log file', "Name of the log file"]
+        sys_parms['single_log_file'] = [False, 'Use single log file', 'Check to use a single log file. Unchecked will create a log file for each run, suffixed by date-time']
         sys_parms['ok_chars'] = ["-_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", \
                                  "Allowable characters", "List of allowable characters for file names"]
         sys_parms['wipcsv'] = ["", "Write Initiation Points to csv", "Enter a csv file name to write initiation points to csv as well as the gpkg file"]
-        sys_parms['ripcsv'] = ["", "Read Inititiation Points from csv", "Read initiation points this csv file instead of the gpkg file"]
-        sys_parms['userowcol'] = [False, "Use Row/Column", "Uses the row/colum if the intitation points are loaded from file; otherwise uses lat/lon"]
+        sys_parms['ripcsv'] = ["", "Read Inititiation Points from csv", "Enter a csv file name to read initiation points this file instead of the gpkg file"]
+        sys_parms['userowcol'] = [False, "Use Row/Column", "Uses the row/colum if the intitation points are loaded from csv file; otherwise uses lat/lon"]
         sys_parms['ecraw_fn'] = ["", "Energy Cone - Raw file", "Enter a tif filename to write the raw energy cone to"]
         sys_parms['ecfilled_fn'] = ["", "Energy Cone - Filled file", "Enter a tif filename to write the filled energy cone to"]
         sys_parms['ec_fn'] = ["", "Write Energy Cone Line points to csv", "Enter a csv file name to write the energy cone line points to csv"]
-        sys_parms['ptextcrs'] = ["EPSG:4326", "Ascii file CRS", "CRS to use if reading data from ASCII files"]
-        sys_parms['povr_hl_ratio'] = [False, "Override H/L Ratio limits", "Check to override limit on HL Ratios of values between 0.2 and 0.3"]
+        # sys_parms['ptextcrs'] = ["EPSG:4326", "Ascii file CRS", "CRS to use if reading data from ASCII files"]
+        sys_parms['povr_hl_ratio'] = [True, "Override H/L Ratio limits", "Check to override limit on HL Ratios of values between 0.2 and 0.3"]
         sys_parms['pwritetif'] = [True, "Output as tif", "Write all output as tif files"]
         sys_parms['pwriteascii'] = [False, "Output as ascii", "Write all output as ascii files (additionally)"]
         sys_parms['pwritecsv'] = [False, "Output as csv", "Write all output as csv files (additionally)"]
         #Lahars
-        sys_parms['pscenario_values'] = [['Lahar', 'Debris', 'Pyroclastic', 'Custom'], "Flow scenarios", "List of types of flow"]
+        sys_parms['pscenario_values'] = [['Lahar', 'Debris', 'Pyroclastic', 'Custom'], "Flow scenarios", "List of types of flow. Include Custom as the last entry to enable customised parameters"]
         sys_parms['pc1_values'] = [[0.05,0.1, 0.05], "Co-efficent #1", "Proportionality coefficient for the cross sectional area"]  
-        sys_parms['pc2_values'] = [[200,20, 35], "Co-efficent #2", "Proportionality coefficient for the planar area"]
+        sys_parms['pc2_values'] = [[200, 20, 35], "Co-efficent #2", "Proportionality coefficient for the planar area"]
+        sys_parms['dy'] = [float(1), "Height increment", "Height increment used to calculate flows"]
         sys_parms['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area"]
         sys_parms['pxsecareadir'] = ["CrossSections", "Cross Sectional Area Directory", "Directory in which cross sectional area graphics will be placed"]
         sys_parms['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area eg IP01"]
@@ -2642,10 +2685,11 @@ sys_parms = load_sys_parms()
 
 # intitialise log file
 if sys_parms['single_log_file'][0]:
-    log_fn = sys_parms['log_file_name'][0] + '.txt'
+    log_fn = sys_parms['log_file_name'][0]
 else:
     dt = datetime.datetime.now()
-    log_fn = sys_parms['log_file_name'][0] + " {:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second) + '.txt'
+    log_fn = sys_parms['log_file_name'][0].split(".")[0] \
+        + " {:04d}{:02d}{:02d}-{:02d}{:02d}{:02d}".format(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second) + '.txt'
 log_fn = os.sep.join([os.getcwd(), log_fn])
 
 log_msg("LaharZ Starting\n", initfile = True, screen_op=False)

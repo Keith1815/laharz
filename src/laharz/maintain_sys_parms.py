@@ -76,7 +76,7 @@ class mlsp_app(tk.Tk):
             nonlocal sys_parms, v, l
             for r, p in enumerate(sys_parms):
                 tk.Label(self.frame, text = sys_parms[p][1], font=('Helvetica', 12)).grid(row=r+10, column = 0, padx = 10, pady = 2, columnspan=1, sticky='NW')
-                if isinstance(sys_parms[p][0], str):
+                if isinstance(sys_parms[p][0], str) or isinstance(sys_parms[p][0], float):
                     v.append(tk.Entry(self.frame, font=('Helvetica', 12), width = 40))
                     v[-1].grid(row=r+10, column = 1, padx = 10, pady = 2, columnspan=2, sticky='NW')
                     v[-1].insert(0, sys_parms[p][0])
@@ -102,10 +102,11 @@ class mlsp_app(tk.Tk):
             errors = False
             bi = 0
             for i, p in enumerate(sys_parms):
+                error = False
                 l[i]['fg'] = 'red'
                 if p in {'log_file_name'}:
                     sys_parms[p][0], error, cf, l[i]['text'] = \
-                        validate_file_to_write(v[i].get(), self, "Log file", "", extend = 'txt', type = 'txt')
+                        validate_file_to_write(v[i].get(), extend = 'txt', type = 'txt')
                     v[i].delete(0, "end")
                     v[i].insert(0, sys_parms[p][0])
                     errors = error or errors
@@ -114,30 +115,33 @@ class mlsp_app(tk.Tk):
                     # sys_parms[p][0] = sys_parms[p][0].get()
                     l[i]['text'] = ""
                 
-                if p in {'ok_chars', 'ptextcrs', 'p_diagonal', 'pplotip'}:
+                if p in {'ok_chars', 'ptextcrs', 'pplotip'}:
+                    sys_parms[p][0] = v[i].get()
                     l[i]['text'] = ""
 
-                if p in {'pplotvol'}:
+                if p in {'pplotvol', 'dy'}:
                     l[i]['text'] = ""
-                    error = False
                     if v[i].get() !="":
                         try:
-                            float(v[i].get())
+                            sys_parms[p][0] = float(v[i].get())
                         except:
                             error = True
                             l[i]['text'] = "Error: not a numeric value"
+                    if not error and p == 'dy' and sys_parms[p][0] <=0:
+                        error = True
+                        l[i]['text'] = "Error: must be greater than zero"
                     errors = error or errors
                 
                 if p in {'wipcsv', 'ec_fn', 'pxsec_fn'}:
                     sys_parms[p][0], error, cf, l[i]['text'] = \
-                        validate_file_to_write(v[i].get(), self, "Log file", "", extend = 'csv', type = 'csv')
+                        validate_file_to_write(v[i].get(), extend = 'csv', type = 'csv')
                     v[i].delete(0, "end")
                     v[i].insert(0, sys_parms[p][0])
                     errors = error or errors
 
                 if p in {'ecraw_fn', 'ecfilled_fn'}:
                     sys_parms[p][0], error, cf, l[i]['text'] = \
-                        validate_file_to_write(v[i].get(), self, "Log file", "", extend = 'tif', type = 'tif')
+                        validate_file_to_write(v[i].get(), extend = 'tif', type = 'tif')
                     v[i].delete(0, "end")
                     v[i].insert(0, sys_parms[p][0])
                     errors = error or errors
@@ -156,17 +160,37 @@ class mlsp_app(tk.Tk):
                     except:
                         error = True 
                         l[i]['text'] = "Error: not a recognised list"
+
+                    if not error:
+                        if sys_parms[p][0][0:3] != ['Lahar', 'Debris', 'Pyroclastic']:
+                            error = True 
+                            l[i]['text'] = "Error: List must begin with Lahar, Debris and Pyroclastic"
+
+                    if not error:
+                        if 'Custom' in sys_parms[p][0] and sys_parms[p][0][-1]!="Custom":
+                            error = True 
+                            l[i]['text'] = "Error: Custom must be the last entry"
+
                     errors = error or errors
 
                 if p in {'pc1_values', 'pc2_values'}:
                     l[i]['text']  = ""
-                    sys_parms[p][0] = v[i].get().split(",")
-
                     try: 
                         sys_parms[p][0] = v[i].get().replace(" ", "").split(",")
                     except:
                         error = True 
                         l[i]['text'] = "Error: not a recognised list"
+
+                    if not error:
+                        if p == 'pc1_values':
+                            if sys_parms[p][0][0:3] != ['0.05', '0.1', '0.05']:
+                                error = True 
+                                l[i]['text'] = "Error: List must begin with 0.05, 0.1, 0.05"
+                        else:
+                            if sys_parms[p][0][0:3] != ['200', '20' , '35']:
+                                error = True 
+                                l[i]['text'] = "Error: List must begin with 200, 20, 35"
+
                     if not error:
                         if "Custom" in sys_parms['pscenario_values'][0]:
                             expected_length = len(sys_parms['pscenario_values'][0]) - 1
@@ -175,12 +199,12 @@ class mlsp_app(tk.Tk):
                         
                         if len(sys_parms[p][0]) != expected_length:
                             error = True 
-                            l[i]['text'] = "Error: not enough entries corresponding to scenarios"
+                            l[i]['text'] = "Error: number of entries must correspond to number of scenarios"
                         
                     if not error:
-                        for i in sys_parms[p][0]:
+                        for j in sys_parms[p][0]:
                             try:
-                                float(i)
+                                float(j)
                             except:
                                 error = True 
                                 l[i]['text'] = "Error: must be numeric values"
@@ -206,37 +230,13 @@ class mlsp_app(tk.Tk):
                 # frame.update
                 pass
 
-        def validate_file_to_write(fn_in, dir, frame, ovr_msg, **kwargs):
+        def validate_file_to_write(fn_in, **kwargs):
             # kwargs
             # extend: if no file type specified, use this one
             # type: test against this file type
-            # exists: True to test if file already exists; asks for confirmation of the overwrite
-
-            def press_overwrite():
-                nonlocal error, error_msg, cancel_flag
-                try:
-                    f = open(fn, "w")
-                    f.close()
-                    error = False
-                    error_msg = ""
-                    cancel_flag = False
-
-                except: #maybe to use OSError as eception type
-                    error = True
-                    error_msg = "Error: File unavailable - possibly locked in another application (eg QGIS)"
-                    cancel_flag = False
-                    
-                proceed.set(True)
-
-            def press_cancel():
-                nonlocal error, error_msg, cancel_flag
-                error = False
-                cancel_flag = True
-                error_msg = ""
-                proceed.set(True)
-
             #test if follows the format ######.###
-            fn = fn_in.split(".")
+
+            fn = fn_in.strip().split(".")
             if not 0 < len(fn) <= 2:
                 return fn_in, True, False, "Error: Invalid file name"
             
@@ -260,68 +260,15 @@ class mlsp_app(tk.Tk):
                     return fn_in, True, False, "Error: Invalid type. Type " + kwargs['type'] + " only"
 
             fn = fn[0] + "." + fn[1]
-            # test if already exists
-            if 'exists' in kwargs:
-                if kwargs['exists']:
-                    error = False
-                    cancel_flag = False
-                    error_msg = ""
-                    fnp = os.sep.join([os.getcwd(), dir, fn])
-                    if os.path.isfile(fnp):
-                        # freeze frame
-                        for child in frame.winfo_children():
-                                child.configure(state='disabled')
-
-                        # create pop out from frame
-                        po_toplvl = tk.Toplevel()
-                        po_toplvl.protocol("WM_DELETE_WINDOW", press_cancel)
-                        po_toplvl.columnconfigure(0, weight = 1)
-                        po_toplvl.rowconfigure(0, weight = 1)
-                        po_toplvl['borderwidth'] = 50
-
-                        frame1 = tk.Frame(po_toplvl)
-                        frame1.columnconfigure(0, weight = 1)
-                        frame1.rowconfigure(0, weight = 1)
-                        frame1.grid(row = 0, column = 0, padx = 10, sticky=tk.NSEW)
-
-                        frame2 = tk.Frame(po_toplvl)
-                        frame2.columnconfigure(0, weight = 1)
-                        frame2.rowconfigure(0, weight = 1)
-                        # frame2.grid(row = 1, column = 0, padx = 10, sticky=tk.EW)
-                        frame2.grid(row = 1, column = 0)
-
-                        tk.Label(frame1, text=ovr_msg, font=('Helvetica', 12, 'bold')).grid(row=10, column = 0, padx = 10, columnspan=2, sticky='W')
-                        tk.Label(frame1, text='File ' + fn +' already exists in ' + dir, font=('Helvetica', 12)).grid(row=20, column = 0, padx = 10, columnspan=2, sticky='W')
-                        tk.Label(frame1, text = '').grid(row=30, column = 0, padx = 10, columnspan=1, sticky='W')
-
-                        tk_overwrite_button = tk.Button(frame2, text="Overwrite", font=('Helvetica', 12), command=press_overwrite)
-                        tk_overwrite_button.grid(row=0, column = 0, padx = 10, columnspan=1, sticky = 'E')
-                        tk_cancel_button = tk.Button(frame2, text="Cancel", font=('Helvetica', 12), command = press_cancel)
-                        tk_cancel_button.grid(row=0, column = 1, padx = 10, columnspan=1, sticky = 'W')
-
-                        #pause execution until button is pressed
-                        proceed = tk.BooleanVar()
-                        proceed.set(False)
-                        tk_cancel_button.wait_variable(proceed)
-
-                        #unfreeze frame
-                        for child in frame.winfo_children():
-                                child.configure(state='normal')
-                        #remove pop up
-                        po_toplvl.destroy()
-
-                        return fn_in, error, cancel_flag, error_msg
-
             return fn, False, False, ""
 
         def validate_file_to_read(fn_in, **kwargs):
             # kwargs 
             # type - validates extension
             # extend - adds extension if not specified
-            # exists - checks if file exists in cwd
             
             #test if follows the format ######.###
-            fn = fn_in.split(".")
+            fn = fn_in.strip().split(".")
             if not 0 < len(fn) <= 2:
                 return fn_in, True, "Error: Invalid file name"
             
@@ -345,10 +292,6 @@ class mlsp_app(tk.Tk):
                     return fn_in, True, "Error: Invalid type. Type " + kwargs['type'] + " only"
 
             fn = fn[0] + "." + fn[1]
-            if 'exists' in kwargs:
-                fnp = os.sep.join([os.getcwd(), fn])
-                if not os.path.isfile(fnp):
-                    return fn_in, True, "Error: File does not exist in directory " + os.getcwd()
 
             return fn, False, ""
         
