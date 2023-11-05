@@ -119,7 +119,7 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/discussions/install-requires-vs-requirements/
-    install_requires=['shapely', 'rasterio', 'geopandas', 'scipy'],
+    install_requires=['shapely', 'rasterio', 'geopandas', 'scipy', 'pillow'],
     # Optional
 
     # List additional groups of dependencies here (e.g. development
