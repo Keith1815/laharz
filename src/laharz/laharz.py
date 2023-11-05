@@ -47,7 +47,8 @@ import sys
 from scipy.ndimage import binary_erosion, binary_fill_holes
 import csv
 from PIL import Image, ImageDraw, ImageFont, ImageTk
-import pkg_resources
+#import pkg_resources
+from importlib.resources import files
 
 class LaharZ_app(tk.Tk): 
     def __init__(self):
@@ -99,8 +100,8 @@ class LaharZ_app(tk.Tk):
         tk.Label(f1, text='', font=('Times New Roman', 60, 'italic')).grid(row=1, column = 0, columnspan=1, sticky='')
         tk.Label(f1, text='Version: ' + __version__, font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
         tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
-        logo = pkg_resources.resource_stream(__name__, 'logo/uob.png')
-        image = Image.open(logo)
+        logof = str(files("logo").joinpath("uob.png"))
+        image = Image.open(logof)
         c2.image = ImageTk.PhotoImage(image)
         c2.create_image(0, 0, image=c2.image, anchor='nw')
         self.canvas.update()
