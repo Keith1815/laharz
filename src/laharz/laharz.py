@@ -99,7 +99,7 @@ class LaharZ_app(tk.Tk):
         tk.Label(f1, text='Version: ' + __version__, font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
         tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
 
-        logo = files('laharz.data').joinpath('uob.png')
+        logo = files('laharz').joinpath('data', 'uob.png')
         image = Image.open(logo)
 
         c2.image = ImageTk.PhotoImage(image)
