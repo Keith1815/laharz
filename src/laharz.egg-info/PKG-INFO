@@ -1,0 +1,47 @@
+Metadata-Version: 2.1
+Name: laharz
+Version: 2.0.0
+Summary: Creates tif maps of lahars using QGIS
+Home-page: https://github.com/Keith1815/laharz
+Author: Keith Blair
+Author-email: laharz@hotmail.com
+Project-URL: Bug Reports, https://github.com/keith1815/lztest/issues
+Project-URL: Source, https://github.com/keith1815/lztest/
+Keywords: volcano,volcanoes,volcanology,lahar,lahars,geology,geoscience
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Volcanologists
+Classifier: Topic :: Volcanology :: Lahars
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE.txt
+Requires-Dist: shapely
+Requires-Dist: rasterio
+Requires-Dist: geopandas
+Requires-Dist: scipy
+Requires-Dist: pillow
+
+# LaharZ
+
+LaharZ is an open source tool which can be used to model various flow hazards, most significantly lahars. Its inputs are a digital elevation model (DEM), a stream file (which defines stream thalwegs) and a flow direction file. From these inputs, LaharZ creates an energy cone based on a height/length (H/L) ration; a set of initiation points (which can be edited) and a set of flow files based on a range of volumes.
+
+The stream and flow files can be created on any appropriate QIS system; the resulting flows can similarly be displayed on any GIS system. However, LaharZ has been written and tested using QGIS.
+
+The graphics produced can be displayed on any visualisation tool (including QGIS’s 3D mapping tool). However, LaharZ has been written and tested using Paraview for 3D graphics.
+
+The programme is based on Schilling, S.P., 1998.
+
+See the documenation for more details. A full user guide is provided.
+
+Keith Blair
+laharz@hotmail.com
+October 2023
+Version 2.0.0a
+
