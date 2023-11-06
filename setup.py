@@ -142,7 +142,7 @@ setup(
     #   },
     
     include_package_data=True,
-    package_data = {'laharz':['data/uob.png']}
+    package_data = {'laharz':['data/uob.png']},
     
     # Although 'package_data' is the preferred approach, in some case you may
     # need to place data files outside of your packages. See:
