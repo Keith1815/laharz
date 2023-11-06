@@ -103,7 +103,7 @@ setup(
     # simple. Or you can use find_packages().
     #
     #
-    #   py_modules=["my_module"],
+    py_modules=["laharz"],
     #
     packages=find_packages(where='src'),  # Required
     
