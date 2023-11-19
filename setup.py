@@ -122,7 +122,7 @@ setup(
     install_requires=['shapely>=2.0.2', 
                       'rasterio>=1.3.9', 
                       'geopandas>=0.14.0',
-                      'numpy>=1.26.0' 
+                      'numpy>=1.26.0', 
                       'scipy>=1.11.3', 
                       'pillow>=10.1.0'],
     # Optional
