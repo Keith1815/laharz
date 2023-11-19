@@ -96,14 +96,22 @@ class LaharZ_app(tk.Tk):
 
         tk.Label(f1, text='LaharZ', font=('Times New Roman', 120, 'italic')).grid(row=0, column = 0, columnspan=1, sticky='')
         tk.Label(f1, text='', font=('Times New Roman', 10, 'italic')).grid(row=1, column = 0, columnspan=1, sticky='')
-        tk.Label(f1, text='Version: ' + __version__, font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
-        tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+        # tk.Label(f1, text='Version: ' + __version__, font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+        # tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
 
-        logo_source = files('laharz').joinpath('uob.png')
-        with as_file(logo_source) as logo_f:
-            with Image.open(logo_f) as image:
-                c2.image = ImageTk.PhotoImage(image)
-                c2.create_image(0, 0, image=c2.image, anchor='nw')
+        if 'site-packages' in __file__:
+            logo_source = files('laharz').joinpath('uob.png')
+            with as_file(logo_source) as logo_f:
+                with Image.open(logo_f) as image:
+                    c2.image = ImageTk.PhotoImage(image)
+                    c2.create_image(0, 0, image=c2.image, anchor='nw')
+            tk.Label(f1, text='Version: ' + __version__ + ' package', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+            tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+        else:
+            c2.image = ImageTk.PhotoImage(Image.open('uob.png'))
+            c2.create_image(0, 0, image=c2.image, anchor='nw')
+            tk.Label(f1, text='Version: ' + __version__ + ' stand alone', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+            tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
 
         self.canvas.update()
         f1.after(3000, f1.destroy())
@@ -998,7 +1006,7 @@ class LaharZ_app(tk.Tk):
                     px = (peakrc[1] ) * dem_cell_size
                     py = (peakrc[0] ) * dem_cell_size
 
-                    ec_v = np.zeros_like(dem_v)
+                    ec_v = np.zeros_like(dem_v).astype(float)
                     ec_v.fill(np.nan)
 
                     min_point_rc = np.array((mesh_lr + mesh_rows//2, mesh_lc))
@@ -2044,7 +2052,7 @@ class LaharZ_app(tk.Tk):
                     xseccsv = csv.writer(open(os.sep.join([pcrosssec_area_dir, sys_parms['pxsec_fn'][0]]), "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
                     xseccsv.writerow(["Point", "Latitude", "Longitude", "Row", "Col"])
 
-                innund = np.zeros_like(dem_v)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
+                innund = np.zeros_like(dem_v).astype(int)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
                 plan_area = 0
 
                 # cycle down the stream until the planometric area limit is exceeded
@@ -2252,9 +2260,9 @@ class LaharZ_app(tk.Tk):
 
                 # Calculate Lahars
                 log_msg("Generating Flows...", frame = self)
-                innund_total_v = np.zeros_like(dem_v)  # array for total innundations
+                innund_total_v = np.zeros_like(dem_v).astype(int)  # array for total innundations
                 for v1, v in enumerate(self.pvolume_value):
-                    innund_vol_v = np.zeros_like(dem_v)  # array for all innundations for a particular volume
+                    innund_vol_v = np.zeros_like(dem_v).astype(np.uint)  # array for all innundations for a particular volume
 
                     for i, ip in enumerate(ips):
                         log_msg("Generating Flow. Initiation Point: {}/{}   Volume: {:.2e} {}/{} ".format(i + 1, len(ips), v, v1 + 1, len(self.pvolume_value)), frame = self)
