@@ -111,7 +111,7 @@ setup(
     # 'Programming Language' classifiers above, 'pip install' will check this
     # and refuse to install the project if the version does not match. See
     # https://packaging.python.org/guides/distributing-packages-using-setuptools/#python-requires
-    python_requires='>=3.8',
+    python_requires='>=3.11',
 
     # This field lists other packages that your project depends on to run.
     # Any package you put here will be installed by pip when your project is
@@ -119,7 +119,12 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/discussions/install-requires-vs-requirements/
-    install_requires=['shapely', 'rasterio', 'geopandas', 'scipy', 'pillow'],
+    install_requires=['shapely>=2.0.2', 
+                      'rasterio>=1.3.9', 
+                      'geopandas>=0.14.0',
+                      'numpy>=1.26.0' 
+                      'scipy>=1.11.3', 
+                      'pillow>=10.1.0'],
     # Optional
 
     # List additional groups of dependencies here (e.g. development
