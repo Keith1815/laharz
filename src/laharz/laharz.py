@@ -108,10 +108,15 @@ class LaharZ_app(tk.Tk):
             tk.Label(f1, text='Version: ' + __version__ + ' package', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
             tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
         else:
-            c2.image = ImageTk.PhotoImage(Image.open('uob.png'))
-            c2.create_image(0, 0, image=c2.image, anchor='nw')
-            tk.Label(f1, text='Version: ' + __version__ + ' stand alone', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
-            tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+            try:
+                c2.image = ImageTk.PhotoImage(Image.open('uob.png'))
+                c2.create_image(0, 0, image=c2.image, anchor='nw')
+                tk.Label(f1, text='Version: ' + __version__ + ' stand alone', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+                tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+            except:
+                tk.Label(f1, text='Version: ' + __version__ + ' stand alone, no logo', font=('Times New Roman', 20)).grid(row=4, column = 0, columnspan=1, sticky='W')
+                tk.Label(f1, text='', font=('Times New Roman', 20)).grid(row=3, column = 0, columnspan=1, sticky='W')
+
 
         self.canvas.update()
         f1.after(3000, f1.destroy())
@@ -461,7 +466,7 @@ class LaharZ_app(tk.Tk):
             psearch_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.psearch_fn])
 
             gds = gpd.GeoSeries(geoms, index, crs="EPSG:4326")
-            gds.to_file(psearch_fn, driver="GPKG")
+            gds.to_file(psearch_fn, driver="GPKG") #ffff
             log_msg("Created new search file: " + psearch_fn, screen_op = False)
 
             # Also tried with Fiona but it can't manage points and ploygons together but can name the layer
@@ -1238,7 +1243,7 @@ class LaharZ_app(tk.Tk):
                             geoms.append(shPoint((ll[0], ll[1])))
                             index.append("IP{:02d}".format(irc[0]))
                     gds = gpd.GeoSeries(geoms, index, crs="EPSG:4326")
-                    gds.to_file(pinitpoints_fn, driver="GPKG", mode = 'w')
+                    gds.to_file(pinitpoints_fn, driver="GPKG", mode = 'w') #fff
 
                     # Initiation points and peak saved in a csv file if desired. 
                     # Option only avail in programme. Not intended for normal user. 
@@ -1588,10 +1593,11 @@ class LaharZ_app(tk.Tk):
             if error:
                 self.tk_pvolume_msg['fg'] = 'red'
             else:
-                self.pvolume = self.tk_pvolume.get()
-                self.pvolume = self.pvolume.replace(" ", "")
-                self.pvolume = self.pvolume.split(",")
-                self.pvolume = ', '.join(str(x) for x in self.pvolume) #converts list to csv string
+                self.pvolume_value.sort()
+                self.pvolume = ', '.join("{:.2e}".format(x) for x in self.pvolume_value) #converts list to csv string
+                self.tk_pvolume.delete(0, "end")
+                self.tk_pvolume.insert(0, self.pvolume)
+
             return error
 
         def validate_c1():
