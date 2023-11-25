@@ -1593,8 +1593,18 @@ class LaharZ_app(tk.Tk):
             if error:
                 self.tk_pvolume_msg['fg'] = 'red'
             else:
+                # change entered string into array
+                self.pvolume = self.tk_pvolume.get()
+                self.pvolume = self.pvolume.replace(" ", "")
+                self.pvolume = self.pvolume.split(",")
+
+                # combine entered string and values; sort by values
+                pvolumes = list(zip(self.pvolume, self.pvolume_value))
+                pvolumes = sorted(pvolumes, key=lambda l:l[0])
                 self.pvolume_value.sort()
-                self.pvolume = ', '.join("{:.2e}".format(x) for x in self.pvolume_value) #converts list to csv string
+
+                #recreate entered string
+                self.pvolume = ', '.join("{}".format(x) for x in [i[0] for i in pvolumes]) #converts list to csv string
                 self.tk_pvolume.delete(0, "end")
                 self.tk_pvolume.insert(0, self.pvolume)
 
