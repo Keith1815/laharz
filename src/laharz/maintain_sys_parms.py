@@ -1,4 +1,4 @@
-__version__ = '2.0.0'
+__version__ = '2.1.0'
 import tkinter as tk
 import os
 from tkinter import ttk as ttk
@@ -10,7 +10,7 @@ class mlsp_app(tk.Tk):
     def __init__(self):
         super().__init__() #copies attributes from parent class (tk)
         self.geometry('1920x1080')
-        self.title('Maintain LaharZ System Parameters')
+        self.title('Maintain LaharZ System Parameters v'+__version__)
         self.columnconfigure(0, weight = 1)
         self.rowconfigure(0, weight = 1)
 
