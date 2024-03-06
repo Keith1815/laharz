@@ -21,7 +21,7 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    version='2.0.0',  # Required
+    version='2.1.0',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -124,7 +124,9 @@ setup(
                       'geopandas>=0.14.0',
                       'numpy>=1.26.0', 
                       'scipy>=1.11.3', 
-                      'pillow>=10.1.0'],
+                      'pillow>=10.1.0',
+                      'richdem>=0.3.4'
+    ],
     # Optional
 
     # List additional groups of dependencies here (e.g. development
