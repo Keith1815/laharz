@@ -119,15 +119,15 @@ setup(
     #
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/discussions/install-requires-vs-requirements/
-    install_requires=['shapely>=2.0.2', 
-                      'rasterio>=1.3.9', 
-                      'geopandas>=0.14.0',
-                      'numpy>=1.26.0', 
-                      'scipy>=1.11.3', 
-                      'pillow>=10.1.0',
-                      'richdem>=0.3.4'
-    ],
-    # Optional
+    # install_requires=['shapely>=2.0.2', 
+    #                   'rasterio>=1.3.9', 
+    #                   'geopandas>=0.14.0',
+    #                   'numpy>=1.26.0', 
+    #                   'scipy>=1.11.3', 
+    #                   'pillow>=10.1.0',
+    #                   'richdem>=0.3.4'
+    # ],
+    # # Optional
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
