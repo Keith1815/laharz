@@ -1,4 +1,4 @@
-__version__ = '2.1.0'
+__version__ = '2.1.1'
 import tkinter as tk
 import os
 from tkinter import ttk as ttk
@@ -16,11 +16,11 @@ class mlsp_app(tk.Tk):
 
         # # set up frame (use tk not tkk)
         m_frame = tk.Frame(self, width = 1920, height = 1080)
-        
+
         m_frame.columnconfigure(0, weight = 1)
         m_frame.rowconfigure(0, weight = 1)
         m_frame.grid(row = 0, column = 0, sticky=tk.NSEW)
-               
+
         # Add a canvas in that frame.
         self.canvas = tk.Canvas(m_frame, width = 1800, height = 1080)
         self.canvas.columnconfigure(0, weight = 1)
@@ -72,7 +72,7 @@ class mlsp_app(tk.Tk):
 
             self.tk_statusmsg = tk.Label(self.frame, text = statusmsg, font=('Helvetica', 12), justify = 'left')
             self.tk_statusmsg.grid(row=201, column = 0, padx = 10, columnspan=4, sticky='W')
-        
+
         def display_parameters():
             nonlocal sys_parms, v, l
             for r, p in enumerate(sys_parms):
@@ -111,11 +111,11 @@ class mlsp_app(tk.Tk):
                     v[i].delete(0, "end")
                     v[i].insert(0, sys_parms[p][0])
                     errors = error or errors
-         
-                if p in {'single_log_file', 'userowcol', 'povr_hl_ratio', 'pwritetif', 'pwriteascii', 'pwritecsv', 'pplotxsecarea'}:
+
+                if p in {'single_log_file', 'pverbose', 'userowcol', 'povr_hl_ratio', 'pwritetif', 'pwriteascii', 'pwritecsv', 'pplotxsecarea'}:
                     # sys_parms[p][0] = sys_parms[p][0].get()
                     l[i]['text'] = ""
-                
+
                 if p in {'ok_chars', 'ptextcrs', 'pplotip'}:
                     sys_parms[p][0] = v[i].get()
                     l[i]['text'] = ""
@@ -132,8 +132,8 @@ class mlsp_app(tk.Tk):
                         error = True
                         l[i]['text'] = "Error: must be greater than zero"
                     errors = error or errors
-                
-                if p in {'wipcsv', 'ec_fn', 'pxsec_fn'}:
+
+                if p in {"wipcsv", "ec_fn", "pxsec_fn", "pplanararea_fn"}:
                     sys_parms[p][0], error, cf, l[i]['text'] = \
                         validate_file_to_write(v[i].get(), extend = 'csv', type = 'csv')
                     v[i].delete(0, "end")
@@ -197,11 +197,11 @@ class mlsp_app(tk.Tk):
                             expected_length = len(sys_parms['pscenario_values'][0]) - 1
                         else:
                             expected_length = len(sys_parms['pscenario_values'][0])
-                        
+
                         if len(sys_parms[p][0]) != expected_length:
                             error = True 
                             l[i]['text'] = "Error: number of entries must correspond to number of scenarios"
-                        
+
                     if not error:
                         for j in sys_parms[p][0]:
                             try:
@@ -209,7 +209,7 @@ class mlsp_app(tk.Tk):
                             except:
                                 error = True 
                                 l[i]['text'] = "Error: must be numeric values"
-                  
+
                     errors = error or errors
 
                 if p in {'pxsecareadir'}:
@@ -235,26 +235,26 @@ class mlsp_app(tk.Tk):
             # kwargs
             # extend: if no file type specified, use this one
             # type: test against this file type
-            #test if follows the format ######.###
+            # test if follows the format ######.###
 
             fn = fn_in.strip().split(".")
             if not 0 < len(fn) <= 2:
                 return fn_in, True, False, "Error: Invalid file name"
-            
+
             if fn[0] == "":
                 return "", False, False, ""
-                
+
             # add extension
             if len(fn) ==1:
                 if not 'extend' in kwargs:
                     return fn_in, True, "Error: Invalid file name - no extension specified"
                 else:
                     fn.append(kwargs['extend'])        
-                
-            #test valid characters
+
+            # test valid characters
             if not(all([x in sys_parms['ok_chars'][0] for x in fn[0]]) and all([x in sys_parms['ok_chars'][0] for x in fn[1]])):
                 return fn_in, True, False, "Error: Invalid characters in filename"
-            
+
             # test extension
             if 'type' in kwargs:
                 if fn[1] != kwargs['type']:
@@ -264,29 +264,29 @@ class mlsp_app(tk.Tk):
             return fn, False, False, ""
 
         def validate_file_to_read(fn_in, **kwargs):
-            # kwargs 
+            # kwargs
             # type - validates extension
             # extend - adds extension if not specified
-            
-            #test if follows the format ######.###
+
+            # test if follows the format ######.###
             fn = fn_in.strip().split(".")
             if not 0 < len(fn) <= 2:
                 return fn_in, True, "Error: Invalid file name"
-            
+
             if fn[0] == "":
                 return fn_in, False, ""
-                
+
             # add extension
             if len(fn) ==1:
                 if not 'extend' in kwargs:
                     return fn_in, True, "Error: Invalid file name - no extension specified"
                 else:
                     fn.append(kwargs['extend'])        
-                
-            #test valid characters
+
+            # test valid characters
             if not(all([x in sys_parms['ok_chars'][0] for x in fn[0]]) and all([x in sys_parms['ok_chars'][0] for x in fn[1]])):
                 return fn_in, True, "Error: Invalid characters in filename"
-            
+
             # test extension
             if 'type' in kwargs:
                 if fn[1] != kwargs['type']:
@@ -295,17 +295,17 @@ class mlsp_app(tk.Tk):
             fn = fn[0] + "." + fn[1]
 
             return fn, False, ""
-        
+
         def press_quit_button():
             self.destroy()
-        
+
         ffound = True
         try:
             sys_parms = pickle.load(open(os.sep.join([os.getcwd(), "sys_parameters.pickle"]), "rb"))
         except:
             ffound = False
             print("File {} not found in {}. To create a default system parameters file, run LaharZ. Terminating")
-        
+
         v, l = [], [] # values, labels
         self.frame = create_frame()
         title()

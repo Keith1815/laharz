@@ -1,4 +1,4 @@
-# Version 2.0.1 Released: Mar 2024
+# Version 2.1.0 Released: Jun 2024
 # Development version#
 
 # Keith Blair
@@ -35,9 +35,11 @@
 #               - ability to create own stream and flow files
 #               - removed some validation anomolies
 #               - dynamic font sizes on cross section area charts
-
+# Laharz v2.1.1 - Correction of caluclation of planar area
+#               - system parameters to create a log of points and planar area
+#               - trapping of file locking errors in 
 # ==================================================================================================================================================================================
-__version__ = "2.1.0"
+__version__ = "2.1.1"
 import tkinter as tk
 import os
 from pathlib import Path
@@ -1508,6 +1510,8 @@ class LaharZ_app(tk.Tk):
 
                 dem_cell_size_x = rcdist(dem_f, (0, 0), (0, 1))  # distance in x direction, ie one column
                 dem_cell_size_y = rcdist(dem_f, (0, 0), (1, 0))  # distance in y direction, ie one row
+                log_msg("Cell size x:{} y:{}".format(dem_cell_size_x, dem_cell_size_y), frame = self, screen_op = False)
+                log_msg("Pixel area: {}".format(dem_cell_size_x*dem_cell_size_y), frame = self, screen_op = False)
                 nrows = dem_v.shape[0]
                 ncols = dem_v.shape[1]
 
@@ -2427,7 +2431,17 @@ class LaharZ_app(tk.Tk):
                         img.save(os.sep.join([pcrosssec_area_dir, fn + '.png']))
                         img.close
 
-                    innund[pathpoint.vector()] = 1
+                    # log_msg("Processing point {}, {}".format(pathpoint.vector()[0], pathpoint.vector()[1]))
+                    if innund[pathpoint.vector()] != 1:
+                        innund[pathpoint.vector()] = 1
+                        plan_area += dem_cell_size_x * dem_cell_size_y
+                        if log_planar:
+                            planarcsv.writerow([pathpoint.vector()[0], pathpoint.vector()[1], "Path Point", "y", plan_area])
+                    else:
+                        if log_planar:
+                            planarcsv.writerow([pathpoint.vector()[0], pathpoint.vector()[1], "Path Point", "n", plan_area])
+                        # log_msg("Adding path point {}, {} to lahar. Plan area now: {}".format(pathpoint.vector()[0], pathpoint.vector()[1], plan_area))
+
                     directions = ["N-S", "W-E", "NW-SE", "SW-NE"]
 
                     for direction in directions:
@@ -2445,6 +2459,8 @@ class LaharZ_app(tk.Tk):
                         # be completed. A warning is printed in the Plus or Minus operations in the class.
 
                         if direction != ignore:
+                            # log_msg("Processing in direction {}".format(direction))
+
                             if direction == "N-S":
                                 pos_vect = lhpoint([1, 0])
                                 neg_vect = lhpoint([-1, 0])
@@ -2465,7 +2481,6 @@ class LaharZ_app(tk.Tk):
                             dy = sys_parms['dy'][0]
                             dist = inc_dist
                             xsec_area = inc_dist * dy
-                            plan_area += dem_cell_size_x * dem_cell_size_y
 
                             level = dem_v[pathpoint.vector()] + dy  # initial level of flow
                             p_pos = pathpoint  # set both points to the initial path point
@@ -2486,8 +2501,16 @@ class LaharZ_app(tk.Tk):
                                     # print("ppos", p_pos.vector())
                                     dist += inc_dist
                                     xsec_area += inc_dist * (level - dem_v[p_pos.vector()])
-                                    innund[p_pos.vector()] = 1
-                                    plan_area += dem_cell_size_x * dem_cell_size_y
+                                    if innund[p_pos.vector()] != 1:
+                                        innund[p_pos.vector()] = 1
+                                        plan_area += dem_cell_size_x * dem_cell_size_y
+                                        if log_planar:
+                                            planarcsv.writerow([p_pos.vector()[0], p_pos.vector()[1], direction, "y", plan_area])
+                                    else:
+                                        if log_planar:
+                                            planarcsv.writerow([p_pos.vector()[0], p_pos.vector()[1], direction, "n", plan_area])
+
+                                        # log_msg("Adding point {}, {} to lahar. Plan area now: {}".format(p_pos.vector()[0], p_pos.vector()[1], plan_area))
                                     raise_level = False
 
                                 if xsec_area <= xsec_area_limit:
@@ -2500,8 +2523,17 @@ class LaharZ_app(tk.Tk):
                                         # print("pneg", p_neg.vector())
                                         dist += inc_dist
                                         xsec_area += inc_dist * (level - dem_v[p_neg.vector()])
-                                        innund[p_neg.vector()] = 1
-                                        plan_area += dem_cell_size_x * dem_cell_size_y
+                                        if innund[p_neg.vector()] != 1:
+                                            innund[p_neg.vector()] = 1
+                                            plan_area += dem_cell_size_x * dem_cell_size_y
+                                            if log_planar:
+                                                planarcsv.writerow([p_neg.vector()[0], p_neg.vector()[1], direction, "y", plan_area])
+                                        else:
+                                            if log_planar:
+                                                planarcsv.writerow([p_neg.vector()[0], p_neg.vector()[1], direction, "n", plan_area])
+
+                                            # log_msg("Adding point {}, {} to lahar. Plan area now: {}".format(p_neg.vector()[0], p_neg.vector()[1], plan_area))
+
                                         raise_level = False
 
                                 if raise_level and xsec_area <= xsec_area_limit and not (p_pos_new.overflow or p_neg_new.overflow):
@@ -2516,18 +2548,37 @@ class LaharZ_app(tk.Tk):
                 ###################################################################################################
                 """Generates the lahar for a particular volume and initiation point"""
                 xsec_area_limit = float(self.pc1_value) * v ** (2 / 3)  # Cross sectional area in m2
+                log_msg("Cross sectional area limit: {}".format(xsec_area_limit))
+                
                 plan_area_limit = float(self.pc2_value) * v ** (2 / 3)  # Planimetric area in m2
+                log_msg("Planar area limit: {}".format(plan_area_limit))
+ 
                 dy = 1  # Increment of elevation in m
-
-                plotcsv = False
-                if sys_parms['pplotxsecarea'][0] and ip[0] == sys_parms['pplotip'][0] \
-                    and v == sys_parms['pplotvol'][0] and sys_parms['pxsec_fn'][0] != "":
-                    plotcsv = True
-                    xseccsv = csv.writer(open(os.sep.join([pcrosssec_area_dir, sys_parms['pxsec_fn'][0]]), "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
-                    xseccsv.writerow(["Point", "Latitude", "Longitude", "Row", "Col"])
-
                 innund = np.zeros_like(dem_v).astype(int)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
                 plan_area = 0
+
+                plotcsv = False
+                if sys_parms['pxsec_fn'][0] != "" and ip[0] == sys_parms['pplotip'][0] and v == sys_parms['pplotvol'][0]:
+                    plotcsv = True
+                    try:
+                        xseccsv = csv.writer(open(os.sep.join([os.getcwd(),self.pwdir, sys_parms['pxsec_fn'][0]]), "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
+                    except: #maybe to use OSError as eception type
+                        log_msg("Error: whilst creating {} for lahar points - possibly locked in another application (eg Excel)".\
+                                format(os.sep.join([os.getcwd(),self.pwdir, sys_parms['pxsec_fn'][0]])), errmsg = True, frame = self)
+                        return True, innund
+                    xseccsv.writerow(["Point", "Latitude", "Longitude", "Row", "Col"])
+                
+                log_planar = False
+                if sys_parms['pplanararea_fn'][0] != "" and ip[0] == sys_parms['pplotip'][0] \
+                    and v == sys_parms['pplotvol'][0]:
+                    log_planar = True
+                    try:
+                        planarcsv = csv.writer(open(os.sep.join([os.getcwd(),self.pwdir, sys_parms['pplanararea_fn'][0]]), "w", newline = ""), delimiter=',', quoting=csv.QUOTE_ALL)
+                    except: #maybe to use OSError as eception type
+                        log_msg("Error: whilst creating {} for planar areas - possibly locked in another application (eg Excel)".\
+                                format(os.sep.join([os.getcwd(),self.pwdir, sys_parms['pplanararea_fn'][0]])), errmsg = True, frame = self)
+                        return True, innund
+                    planarcsv.writerow(["Row", "Col", "Direction", "New Point", "Cumulative Planar Area"])
 
                 # cycle down the stream until the planometric area limit is exceeded
                 # Stops when it reaches the sea
@@ -2621,7 +2672,7 @@ class LaharZ_app(tk.Tk):
                     log_msg("Warning: flow direction at point {} has value {}. Expecting values between 1-8. "
                         "This is because the lahar has reached the very edge of the DEM.".format(current_point.vector(), flow_direction), screen_op = False)
 
-                return innund
+                return False, innund
 
             ##############################################################################################
             log_msg("Generating flows...", frame = self)
@@ -2641,7 +2692,12 @@ class LaharZ_app(tk.Tk):
                     except: #maybe to use OSError as eception type
                         log_msg("Error: whilst deleting previous files from directory {} file {} unavailable - possibly locked in another application (eg QGIS)".format(self.plahar_dir, fname), errmsg = True, frame = self)
                         return True
-                os.rmdir(plahar_dir)
+                try:
+                    os.rmdir(plahar_dir)
+                except:
+                    log_msg("Error: whilst deleting directory {} - possibly locked in another application (eg QGIS)".format(self.plahar_dir), errmsg = True, frame = self)
+                    return True
+
                 os.makedirs(plahar_dir)
 
             if sys_parms['pplotxsecarea'][0]:
@@ -2699,6 +2755,8 @@ class LaharZ_app(tk.Tk):
 
             dem_cell_size_x = rcdist(dem_f, (0, 0), (0, 1))  # distance in x direction, ie one column
             dem_cell_size_y = rcdist(dem_f, (0, 0), (1, 0))  # distance in y direction, ie one row
+            log_msg("Cell size x:{} y:{}".format(dem_cell_size_x, dem_cell_size_y), frame = self, screen_op = False)
+            log_msg("Pixel area: {}".format(dem_cell_size_x*dem_cell_size_y), frame = self, screen_op = False)
 
             nrows = dem_v.shape[0]
             ncols = dem_v.shape[1]
@@ -2761,7 +2819,9 @@ class LaharZ_app(tk.Tk):
 
                     for i, ip in enumerate(ips):
                         log_msg("Generating Flow. Initiation Point: {}/{}   Volume: {:.2e} {}/{} ".format(i + 1, len(ips), v, v1 + 1, len(self.pvolume_value)), frame = self)
-                        innund_v = gen_lahar(v, ip)
+                        error, innund_v = gen_lahar(v, ip)
+                        if error:
+                            return error
 
                         ofn = "{}-V{:.2e}".format(ip[0], v).replace("+", "").replace(".", "-")
                         log_msg("Created flow at {} Latitude: {} Longitude: {} Row: {} Column: {} Volume: {} Filename: {}".format(ip[0], ip[4], ip[3], ip[1], ip[2], v, ofn), screen_op=False)  # todo file extension?
@@ -3250,20 +3310,23 @@ def load_sys_parms():
     if not 'dy' in sys_parms:
         sys_parms['dy'] = [float(1), "Height increment", "Height increment used to calculate flows"]
 
+    if not 'pxsec_fn' in sys_parms:
+        sys_parms['pxsec_fn'] = ["", "Lahar Points", "Enter a csv filename to write the points on the lahar for the ip and volume specified below"]
+
     if not 'pplotxsecarea' in sys_parms:
-        sys_parms['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area"]
+        sys_parms['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area for the ip and volume specified below"]
 
     if not 'pxsecareadir' in sys_parms:
         sys_parms['pxsecareadir'] = ["CrossSections", "Cross Sectional Area Directory", "Directory in which cross sectional area graphics will be placed"]
 
+    if not 'pplanararea_fn' in sys_parms:
+        sys_parms['pplanararea_fn'] = ["", "Planar area log", "Enter a csv filename to log details of the planar area for the ip and volume specified below"]
+
     if not 'pplotip' in sys_parms:
-        sys_parms['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area eg IP01"]
+        sys_parms['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area and/or planar area eg IP01"]
 
     if not 'pplotvol' in sys_parms:
-        sys_parms['pplotvol'] = ["", "Volume", "Volume for cross sectional area eg 1e5"]
-
-    if not 'pxsec_fn' in sys_parms:
-        sys_parms['pxsec_fn'] = ["", "Lahar Points", "Enter a csv filename to write the points on the lahar for the ip and volume specified above"]
+        sys_parms['pplotvol'] = ["", "Volume", "Volume for cross sectional area and/or planar area eg 1e5"]
 
     pickle.dump(sys_parms, open(os.sep.join([os.getcwd(), "sys_parameters.pickle"]), "wb"))
     return sys_parms
