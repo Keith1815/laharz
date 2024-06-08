@@ -21,7 +21,7 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    version='2.1.0',  # Required
+    version='2.1.1',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
@@ -178,7 +178,7 @@ setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://github.com/keith1815/lztest/issues',
-        'Source': 'https://github.com/keith1815/lztest/',
+        'Bug Reports': 'https://github.com/keith1815/laharz/issues',
+        'Source': 'https://github.com/keith1815/laharz/',
     },
 )
