@@ -26,16 +26,17 @@ class mlsp_app(tk.Tk):
         self.canvas.columnconfigure(0, weight = 1)
         self.canvas.rowconfigure(0, weight = 1)
         self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
-
+        
         # # Create a vertical scrollbar linked to the canvas.
-        vsbar = ttk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
+        vsbar = ttk.Scrollbar(m_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         vsbar.grid(row=0, column = 1, sticky=tk.NS)
         self.canvas.configure(yscrollcommand=vsbar.set)
 
         # # Create a horizontal scrollbar linked to the canvas.
-        # hsbar = tk.Scrollbar(m_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
-        # hsbar.grid(row=1, column = 0, sticky=tk.EW)
-        # self.canvas.configure(xscrollcommand=hsbar.set)
+        hsbar = tk.Scrollbar(m_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        hsbar.grid(row=1, column = 0, sticky=tk.EW)
+        self.canvas.configure(xscrollcommand=hsbar.set)
+        
         self.exec_frame1() #populate widgets
 
     def exec_frame1(self):
