@@ -38,7 +38,7 @@
 # Laharz v2.1.1 - Correction of caluclation of planar area
 #               - system parameters to create a log of points and planar area
 #               - trapping of file locking errors in 
-# Laharz v2.1.2 - corrected overflow error
+# Laharz v2.1.2 - corrected overflow error, circular flows
 # ==================================================================================================================================================================================
 __version__ = "2.1.2"
 import tkinter as tk
