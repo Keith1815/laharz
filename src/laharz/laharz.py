@@ -1,4 +1,4 @@
-# Version 2.1.0 Released: Jun 2024
+# Version 2.1.2 Released: Jul 2024
 # Development version#
 
 # Keith Blair
@@ -38,8 +38,9 @@
 # Laharz v2.1.1 - Correction of caluclation of planar area
 #               - system parameters to create a log of points and planar area
 #               - trapping of file locking errors in 
+# Laharz v2.1.2 - corrected overflow error
 # ==================================================================================================================================================================================
-__version__ = "2.1.1"
+__version__ = "2.1.2"
 import tkinter as tk
 import os
 from pathlib import Path
@@ -2412,7 +2413,7 @@ class LaharZ_app(tk.Tk):
                             ynw = pheight - (pheight - pborder)
                             draw1.rectangle([(xnw, ynw), (xse, yse)], fill='#7DF5FB')
                             draw1.line([(xse, yse), (xnw, yse), (xnw, ynw), (xse, ynw), (xse, yse)], fill='#000000')
-                            if p == pathpoint and lf:
+                            if p == pathpoint:
                                 PlotMsg(
                                     "Level:{:.2f}".format(level),
                                     (xnw + xse) / 2,
@@ -2489,7 +2490,7 @@ class LaharZ_app(tk.Tk):
                             p_neg_new = pathpoint  # set both points to the initial path point
 
                             # print("IP {} Directon {} pathpoint{}".format(i+1, direction, pathpoint.vector()))
-                            while xsec_area <= xsec_area_limit and plan_area <= plan_area_limit and not (p_pos_new.overflow or p_neg_new.overflow):
+                            while xsec_area <= xsec_area_limit and plan_area <= plan_area_limit and not p_pos_new.overflow and not p_neg_new.overflow:
                                 raise_level = True
                                 p_pos_new = p_pos.plus(pos_vect)
                                 p_pos_new_level = dem_v[p_pos_new.vector()]
@@ -2585,10 +2586,14 @@ class LaharZ_app(tk.Tk):
                 ## Channel paths terminate 1 cell from the
                 ## map edge so no danger of overflow.
                 current_point = lhpoint([ip[1], ip[2]])
+                tracked_points = [[ip[1], ip[2]]] # used to prevent circular errors in flow. Particularly at the edges.
+                circular_flow_error = False
                 point_number = 1
                 flow_direction = flowdir_v[current_point.vector()]  # 1 = NE, 2 = N, 3 = NW...continuing ACW until 8 = E. Some minus error values can exist on the edges
 
-                while plan_area <= plan_area_limit and dem_v[current_point.vector()] > self.psea_level and flow_direction > 0 and not current_point.overflow:
+                while plan_area <= plan_area_limit and dem_v[current_point.vector()] > self.psea_level and \
+                    flow_direction > 0 and not current_point.overflow and not circular_flow_error:
+                    
                     if flow_direction % 4 == 2:  # North or South ie 2 or 6
                         ignore = "N-S"
                     elif flow_direction % 4 == 0:  # East or West ie 4 or 8
@@ -2665,12 +2670,18 @@ class LaharZ_app(tk.Tk):
                         sys.exit()
                     if current_point.overflow:
                         log_msg("Flow thalweg for initiation point {} volume {:.2e} has reached edge of map at point {}".format(ip[0], v, current_point.vector()), screen_op = False)
+                    
+                    if current_point.vector() in tracked_points:
+                        log_msg("Circular flow direction for initiation point {} volume {:.2e} at point {}".format(ip[0], v, current_point.vector()), screen_op = False)
+                        circular_flow_error = True
+                    else:
+                        tracked_points += [current_point.vector()]
 
                     flow_direction = flowdir_v[current_point.vector()]  # 1 = NE, 2 = N, 3 = NW...continuing ACW until 8 = E. Some minus error values can exist on the edges
                     point_number += 1
-                if flow_direction <= 0:
-                    log_msg("Warning: flow direction at point {} has value {}. Expecting values between 1-8. "
-                        "This is because the lahar has reached the very edge of the DEM.".format(current_point.vector(), flow_direction), screen_op = False)
+                    if flow_direction <= 0:
+                        log_msg("Warning: flow direction at point {} has value {}. Expecting values between 1-8. \
+                                This is because the lahar has reached the very edge of the DEM.".format(current_point.vector(), flow_direction), screen_op = False)
 
                 return False, innund
 

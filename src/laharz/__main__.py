@@ -6,6 +6,6 @@ if len(sys.argv) == 1:
 elif sys.argv[1] == 'maintain':
     from laharz import maintain_sys_parms
 else:
-    print("Unknown option. Terminating")
+    print("Unknown option. Valid option is 'maintain'. Terminating")
 
 print("Finished")
