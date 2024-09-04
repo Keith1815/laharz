@@ -1,5 +1,4 @@
-# Version 2.1.2 Released: Jul 2024
-# Development version#
+# Version 2.1.3 Released: Aug 2024
 
 # Keith Blair
 # laharz@hotmail.com
@@ -38,9 +37,12 @@
 # Laharz v2.1.1 - Correction of caluclation of planar area
 #               - system parameters to create a log of points and planar area
 #               - trapping of file locking errors in 
-# Laharz v2.1.2 - corrected overflow error, circular flows
+# Laharz v2.1.2 - corrected overflow error
+# Laharz v2.1.3 - copes with poorly defined edges, no data etc. Primarily to support Mark Bemelmans work with the sandbox
+#               - option to choose whether to fill the dem or not
+#               - option to write the filled DEM to a tif file
 # ==================================================================================================================================================================================
-__version__ = "2.1.2"
+__version__ = "2.1.3"
 import tkinter as tk
 import os
 from pathlib import Path
@@ -279,12 +281,12 @@ class LaharZ_app(tk.Tk):
             self.tk_pdem_fn_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def fill_DEM(r):
-            # not called. Left in place if required in future
             self.tk_pfill_DEM = tk.BooleanVar(value = self.pfill_DEM)
-            tk.Checkbutton(self.frame, text='Fill DEM file', font=('Helvetica', 12), variable=self.tk_pfill_DEM, command = choose_fill_DEM).grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pfill_DEM_msg = tk.Label(self.frame, text = '', font=('Helvetica', 12))
+            self.tk_pfill_DEM_chk = tk.Checkbutton(self.frame, text='Fill DEM file', font=('Helvetica', 12), variable=self.tk_pfill_DEM, command = choose_fill_DEM)
+            self.tk_pfill_DEM_chk.grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_pfill_DEM_msg = tk.Label(self.frame, text = 'Check to fill the DEM file', font=('Helvetica', 12))
             self.tk_pfill_DEM_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
-            tk.Label(self.frame, text = '', font=('Helvetica', 12)).grid(row=r+1, column = 0, padx = 10, columnspan=1, sticky='W')
+            # self.tk_pfill_DEM_label = tk.Label(self.frame, text = '', font=('Helvetica', 12)).grid(row=r+1, column = 0, padx = 10, columnspan=1, sticky='W')
 
         def choose_fill_DEM():
             self.pfill_DEM = self.tk_pfill_DEM.get()
@@ -309,6 +311,9 @@ class LaharZ_app(tk.Tk):
             else:
                 self.tk_statusmsg["text"] = ""
                 self.tk_overwrite_message0.grid_forget()
+                self.tk_pfill_DEM_chk.grid_forget()
+                self.tk_pfill_DEM_msg.grid_forget()
+
                 self.tk_thal_ow_cb.grid_forget()
                 self.tk_flow_ow_cb.grid_forget()
                 self.tk_pthal_fn_msg['text'] = "Name of your streams file in " + self.pwdir
@@ -336,14 +341,15 @@ class LaharZ_app(tk.Tk):
                 self.tk_statusmsg["text"] = ""
                 self.pfile_choice = self.tk_pfile_choice.get()
 
-                overwrite_message0(25)
+                fill_DEM(25)
+                overwrite_message0(26)
                 self.tk_thal_ow = tk.BooleanVar(value = self.pthal_ow)
                 self.tk_thal_ow_cb = tk.Checkbutton(self.frame, text='', font=('Helvetica', 12), variable=self.tk_thal_ow)
-                self.tk_thal_ow_cb.grid(row=26, column = 1, padx = 10, columnspan=1, sticky='W')
+                self.tk_thal_ow_cb.grid(row=27, column = 1, padx = 10, columnspan=1, sticky='W')
                 self.tk_pthal_fn_msg['text'] = "Name of your streams file to be created in " + self.pwdir
 
-                stream_threshold(27)
-                flow_file(28)
+                stream_threshold(28)
+                flow_file(29)
 
                 self.pfile_choice = self.tk_pfile_choice.get()
                 self.pow_thal_fn = ""
@@ -393,7 +399,8 @@ class LaharZ_app(tk.Tk):
             msg_txt = "Name of your flow direction file to be created in " + self.pwdir
             self.tk_pflow_fn_msg = tk.Label(self.frame, text=msg_txt, font=('Helvetica', 12))
             self.tk_pflow_fn_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
-            tk.Label(self.frame, text = '' , font=('Helvetica', 12)).grid(row=r+1, column=0, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_pflow_fn_blk = tk.Label(self.frame, text = '' , font=('Helvetica', 12))
+            self.tk_pflow_fn_blk.grid(row=r+1, column=0, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def apex_choice(r):
             tk.Label(self.frame, text='Determine Energy Cone Apex', font=('Helvetica', 12)).grid(row=r, column = 0, padx = 10, columnspan=1, sticky='W')
@@ -776,7 +783,7 @@ class LaharZ_app(tk.Tk):
             self.tk_statusmsg["text"] = ""
             error = True in {validate_DEM(), validate_incremental_height(), validate_hlratio(), validate_sealevel()}
             if self.pfile_choice == "Gen":
-                error = True in {validate_stream_threshold(), error}
+                error = True in {validate_stream_threshold(), validate_fill_DEM(), error}
             if self.papex_choice == 'LatLon':
                 error = True in {validate_apex(), error}
             elif self.papex_choice == 'Search':
@@ -908,6 +915,10 @@ class LaharZ_app(tk.Tk):
                 return error, cancel_flag
             else:
                 return False, False
+
+        def validate_fill_DEM():
+            self.tk_pfill_DEM_msg['text'] = ""
+            return False
 
         def validate_stream_threshold():
             self.tk_pstream_threshold_msg['text'] = ""
@@ -1401,7 +1412,7 @@ class LaharZ_app(tk.Tk):
                 psearch_option = self.psearch_option
                 pincremental_height = self.pincremental_height
                 phlratio = self.phlratio
-                psea_level = self.psea_level
+                psea_level = self.psea_level + 0.001 #tolerance
                 pplot_mesh = self.pplot_mesh
                 pec_graphics_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pec_graphics_fn])
                 pmesh_extent = float(self.pmesh_extent)
@@ -1423,7 +1434,7 @@ class LaharZ_app(tk.Tk):
                 log_msg('Parameter: psearch_option; Search option used; Value: ' + psearch_option, screen_op = False)
                 log_msg('Parameter: pincremental_height; Incremental height on apex; Value: ' + str(pincremental_height), screen_op = False)
                 log_msg('Parameter: phlratio; H/L Ratio; Value: ' + str(phlratio), screen_op = False)
-                log_msg('Parameter: psea_level; Sea Level; Value: ' + str(psea_level), screen_op = False)
+                log_msg('Parameter: psea_level; Sea Level (including tolerance); Value: ' + str(psea_level), screen_op = False)
                 log_msg('Parameter: pplot_mesh; Flag to plot mesh; Value: ' + str(pplot_mesh), screen_op = False)
                 log_msg('Parameter: pec_graphics_fn; Energy Cone Graphics file; Value: ' + pec_graphics_fn, screen_op = False)
                 log_msg('Parameter: pmesh_extent; Graphics Extent; Value: ' + str(pmesh_extent), screen_op = False)
@@ -1438,16 +1449,54 @@ class LaharZ_app(tk.Tk):
 
                 # Generate Stream file
                 if pfile_choice == 'Gen':
-                    # fill DEM
-                    log_msg("Filling DEM...", frame = self)
-                    if dem_profile["nodata"] == None:
-                        # Geotransform defines affine. Just prevents warning messages. No material difference
-                        rd_dem_a = rd.rdarray(dem_v.astype(float), no_data=-9999)
-                    else:
-                        rd_dem_a = rd.rdarray(dem_v.astype(float), no_data=dem_profile["nodata"])
-                    # need epsilon to be true to have small incremental heights for streams
-                    rd_dem_a.geotransform = (0,1,0,0,0,-1) # Defines affine. Just prevents warning messages. No material difference
-                    dem_v = np.array(rd.FillDepressions(rd_dem_a, epsilon=True, in_place=False))
+
+                    if pfill_DEM:
+                        # fill DEM
+                        log_msg("Filling DEM...", frame = self)
+                        if dem_profile["nodata"] == None:
+                            # Geotransform defines affine. Just prevents warning messages. No material difference
+                            rd_dem_a = rd.rdarray(dem_v.astype(float), no_data=-9999)
+                        else:
+                            rd_dem_a = rd.rdarray(dem_v.astype(float), no_data=dem_profile["nodata"])
+                        # need epsilon to be true to have small incremental heights for streams
+                        rd_dem_a.geotransform = (0,1,0,0,0,-1) # Defines affine. Just prevents warning messages. No material difference
+                        dem_fill_v = np.array(rd.FillDepressions(rd_dem_a, epsilon=True, in_place=False))
+
+                        if sys_parms['pfilldem_fn'][0] !="":
+                            pfilldem_fn = os.sep.join([os.getcwd(), self.pwdir, sys_parms['pfilldem_fn'][0]])
+
+                            log_msg("Writing filled DEM files to {} ...".format(pfilldem_fn), frame = self)
+                            try:
+                                resolve_inout(overwrite=True) #forces overwrite of output file
+                                profile = dem_profile
+                                with rio.Env():
+                                    with rio.open(pfilldem_fn, 'w', **profile) as dst:
+                                        # dst.write(dem_v.astype(rio.float32), 1)
+                                        dst.write(dem_fill_v, 1)
+                            except:
+                                log_msg('Saving filled DEM to ' + pfilldem_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                                return True
+
+                        if sys_parms['pfilldemdiff_fn'][0] !="":
+                            pfilldemdiff_fn = os.sep.join([os.getcwd(), self.pwdir, sys_parms['pfilldemdiff_fn'][0]])
+
+                            log_msg("Writing filled DEM difference file to {} ...".format(pfilldemdiff_fn), frame = self)
+                            try:
+                                resolve_inout(overwrite=True) #forces overwrite of output file
+                                profile = dem_profile.copy()
+                                profile.update(nodata = 0)
+                                dem_fill_diff = dem_fill_v - dem_v
+                                dem_fill_diff[dem_fill_diff<0] = 0
+
+                                with rio.Env():
+                                    with rio.open(pfilldemdiff_fn, 'w', **profile) as dst:
+                                        # dst.write(dem_v.astype(rio.float32), 1)
+                                        dst.write(dem_fill_diff, 1)
+                            except:
+                                log_msg('Saving filled DEM differences to ' + pfilldemdiff_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                                return True
+                        
+                        dem_v = dem_fill_v
 
                     # flow
                     log_msg("Calculating flows...", frame = self)
@@ -1565,6 +1614,7 @@ class LaharZ_app(tk.Tk):
                     # ecraw_v = ((peak_height + pincremental_height)  - dem_v) / ((((b[0] - peakrc[0]) ** 2) + ((b[1] - peakrc[1]) ** 2)) ** .5 * dem_cell_size)
                     ecraw_v = ((peak_height + pincremental_height)  - dem_v) / (((((b[0] - peakrc[0])*dem_cell_size_y) ** 2) + (((b[1] - peakrc[1])*dem_cell_size_x) ** 2)) ** .5)
                 ecraw_v[peakrc[0], peakrc[1]] = 9999
+                ecraw_v = np.where(dem_v == dem_profile['nodata'], 0, ecraw_v)
                 ecraw_v = ecraw_v > phlratio
 
                 if sys_parms['ecraw_fn'][0] !="":
@@ -1577,7 +1627,7 @@ class LaharZ_app(tk.Tk):
                         return True
 
                 log_msg("Filling Energy Cone...", frame = self)
-                ecfilled_v = binary_fill_holes(ecraw_v)
+                ecfilled_v = binary_fill_holes(ecraw_v).astype(int)
                 if sys_parms['ecfilled_fn'][0] !="":
                     ecfilled_fn = os.sep.join([os.getcwd(), self.pwdir, sys_parms['ecfilled_fn'][0]])
                     log_msg("Saving filled energy cone to: " + ecfilled_fn, screen_op=False)
@@ -1592,10 +1642,12 @@ class LaharZ_app(tk.Tk):
                 ecline_v = np.logical_and(ecraw_v, np.logical_not(ecline_v))
                 # remove ec line from edges as gives erroneous IPs if the cone is above the edge
                 # in theory could remove a valid IP at the very edge, but this is unlikely/not an issue
-                ecline_v[:, 0] = 0
-                ecline_v[0, :] = 0
-                ecline_v[:, ncols-1] = 0
-                ecline_v[nrows-1, :] = 0
+
+                ec_points = np.argwhere(ecline_v == 1)
+                for i in ec_points:
+                    if edge(i, dem_v, dem_profile['nodata']):
+                        ecline_v[tuple(i)] = 0
+
                 log_msg("Saving energy line to: " + pecline_fn, screen_op=False)
                 try: 
                     SaveFile(pecline_fn, dem_profile, dem_crs, ecline_v)
@@ -1605,6 +1657,7 @@ class LaharZ_app(tk.Tk):
 
                 # inititiation points
                 ec_points = np.argwhere(ecline_v == 1)
+
                 if sys_parms['ec_fn'][0] != "":
                     error = op_ec_points(ec_points, sys_parms['ec_fn'][0]) #creates csv file of ec_points for debugging
                     if error: 
@@ -1616,7 +1669,9 @@ class LaharZ_app(tk.Tk):
                 for ii, i in enumerate(ec_points):
                     # checks if the ec line and the thalweg share the same cell in the matix: if so, they cross and hence an initiation point
                     # but also checks if the lines cross in an x where they don;t share the same cell. This is done in each direction.
-                    if dem_v[tuple(i)] > psea_level: # 1cm tolerance
+                    # also removes spurious initiation points at the edge caused by the binery erosion
+
+                    if dem_v[tuple(i)] > psea_level:
                         if thal_v[tuple(i)] == 1:
                             initrc.append([ip_counter, i[0], i[1]])
                             ip_counter += 1
@@ -1761,18 +1816,19 @@ class LaharZ_app(tk.Tk):
         load_parameters()
         title(5)
         DEM_file(10)
-        # fill_DEM(15)
+        
         file_choice(20)
         self.pfile_choice = self.tk_pfile_choice.get()
         if self.pfile_choice == 'Gen':
-            overwrite_message0(25)
+            fill_DEM(25)
+            overwrite_message0(26)
 
-        thal_file(26)
+        thal_file(27)
         if self.pfile_choice == 'Gen':
-            stream_threshold(27)
-            flow_file(28)
+            stream_threshold(28)
+            flow_file(29)
 
-        apex_choice(30)
+        apex_choice(32)
         self.papex_choice = self.tk_papex_choice.get()
         if self.papex_choice == "Search":
             overwrite_message1(45)
@@ -2253,6 +2309,11 @@ class LaharZ_app(tk.Tk):
                     if c1 + c2 > ncols - 1 or c1 + c2 < 0:
                         log_msg("Warning: overflow as {} is added to column {}".format(c2, c1), screen_op=False)
                         of = True
+                    if dem_v[r3, c3] == dem_profile['nodata']:
+                        r3 = r1
+                        c3 = c1
+                        log_msg("Warning: overflow (no data) as {}, {} is added to row {} column {}".format(r2, c2, r1, c2), screen_op=False)
+                        of = True
                     return lhpoint([r3, c3], of)
 
                 def minus(self, p):
@@ -2495,7 +2556,7 @@ class LaharZ_app(tk.Tk):
                                 p_pos_new = p_pos.plus(pos_vect)
                                 p_pos_new_level = dem_v[p_pos_new.vector()]
                                 if p_pos_new.overflow:
-                                    log_msg("Flow overflow while calculating cross sectional area at point {} direction {} for initial point {} volume {:.2e}".format(p_pos.vector(), direction, ip[0], v), screen_op = False)
+                                    log_msg("Flow overflow while calculating cross sectional area at point {} direction {} for initiation point {} volume {:.2e}".format(p_pos.vector(), direction, ip[0], v), screen_op = False)
 
                                 if level > p_pos_new_level and p_pos_new_level > self.psea_level and not p_pos_new.overflow:
                                     p_pos = p_pos_new
@@ -2616,7 +2677,7 @@ class LaharZ_app(tk.Tk):
 
                     # also evaluate adjacent point if flowing in a diagonal
                     # if flowing NW, evaluate 1 point left (West)
-                    if flow_direction == 3 and dem_v[current_point.plus(lhpoint([0, -1])).vector()] > self.psea_level and not current_point.plus(lhpoint([0, -1])).overflow:
+                    if flow_direction == 3 and dem_v[current_point.plus(lhpoint([0, -1])).vector()] > self.psea_level+.001 and not current_point.plus(lhpoint([0, -1])).overflow:
                         seq += "+W"
                         plan_area, innund = EvalPoint(current_point.plus(lhpoint([0, -1])), plan_area)
                         if plotcsv:
@@ -2688,6 +2749,20 @@ class LaharZ_app(tk.Tk):
             ##############################################################################################
             log_msg("Generating flows...", frame = self)
 
+            log_msg("Parameters", screen_op = False)
+            log_msg('Parameter: pwdir; Working directory; Value: ' + self.pwdir, screen_op = False)
+            log_msg('Parameter: pdem_fn; DEM file; Value: ' + self.pdem_fn, screen_op = False)
+            log_msg('Parameter: pthal_fn; Stream file; Value: ' + self.pthal_fn, screen_op = False)
+            log_msg('Parameter: pflow_fn; Flow direction file; Value: ' + self.pflow_fn, screen_op = False)
+            log_msg('Parameter: pinitpoints_fn; Initiation points file; Value: ' + self.pinitpoints_fn, screen_op = False)
+            log_msg('Parameter: pvolume; Initiation points file; Value: ' + self.pvolume, screen_op = False)
+            log_msg('Parameter: pscenario; Flow scenario; Value: ' + self.pscenario, screen_op = False)
+            log_msg('Parameter: pc1_value; C1 Parameter; Value: ' + self.pc1_value, screen_op = False)
+            log_msg('Parameter: pc2_value; C2 Parameter; Value: ' + self.pc2_value, screen_op = False)
+            self.psea_level += 0.001
+            log_msg('Parameter: psea_level; Sea Level (plus tolerance); Value: ' + str(self.psea_level), screen_op = False)
+            log_msg('Parameter: plahar_dir; Flow output directory; Value: ' + self.plahar_dir, screen_op = False)
+
             log_msg("Preparing flow directory", frame = self)
             plahar_dir = os.sep.join([os.getcwd(),self.pwdir, self.plahar_dir])
 
@@ -2741,7 +2816,7 @@ class LaharZ_app(tk.Tk):
             pflow_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pflow_fn])
             flowdir_f, flowdir_crs, flowdir_v, flow_profile, flow_transform = LoadFile(pflow_fn)
             if flowdir_crs != dem_crs or flow_transform[2] != dem_transform[2] or flow_transform[5] != dem_transform[5]:
-                log_msg("Error - mismatch in projection or origin between DEM file ({}) and Flow Direction file ({})".format(self.pdem_fn, self.pflowdir_fn), errmsg = True, frame = self)
+                log_msg("Error - mismatch in projection or origin between DEM file ({}) and Flow Direction file ({})".format(self.pdem_fn, self.pflow_fn), errmsg = True, frame = self)
                 return True
 
             if flowdir_v.shape != dem_v.shape:
@@ -3198,7 +3273,7 @@ def SaveFile(fn, ref_profile, ref_crs, v):
     
     if sys_parms['pwritetif'][0]:
         resolve_inout(overwrite=True)
-        profile = ref_profile
+        profile = ref_profile.copy()
         # profile.update(dtype=rio.uint8, count=1, compress='lzw', nodata = 255)
         profile.update(dtype=rio.uint16, nodata = 0)
         with rio.Env():
@@ -3264,83 +3339,221 @@ def load_sys_parms():
     except:
         sys_parms = {}
 
-        # ['variable value', 'label', 'description']
+    # ['variable value', 'label', 'description']
+    # uses a shadow version of the sys_parms dictionary to maintain order if new items added
+    sys_parms1 = {}
     
     if not 'log_file_name' in sys_parms:
-        sys_parms['log_file_name'] = ['log', 'Log file', "Name of the log file"]
+        sys_parms1['log_file_name'] = ['log', 'Log file', "Name of the log file"]
+    else:
+        sys_parms1['log_file_name'] = sys_parms['log_file_name']
 
     if not 'single_log_file' in sys_parms:
-        sys_parms['single_log_file'] = [False, 'Use single log file', 'Check to use a single log file. Unchecked will create a log file for each run, suffixed by date-time']
+        sys_parms1['single_log_file'] = [False, 'Use single log file', 'Check to use a single log file. Unchecked will create a log file for each run, suffixed by date-time']
+    else:
+        sys_parms1['single_log_file'] = sys_parms['single_log_file']
 
     if not 'ok_chars' in sys_parms:
-        sys_parms['ok_chars'] = ["-_0123456789 abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", \
+        sys_parms1['ok_chars'] = ["-_0123456789 abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ", \
                                 "Allowable characters", "List of allowable characters for file names"]
+    else:
+        sys_parms1['ok_chars'] = sys_parms['ok_chars']
 
     if not 'pverbose' in sys_parms:
-        sys_parms['pverbose'] = [False, "Verbose", "Select to print status messages on the terminal"]
+        sys_parms1['pverbose'] = [False, "Verbose", "Select to print status messages on the terminal"]
+    else:
+        sys_parms1['pverbose'] = sys_parms['pverbose']
+    
+    if not 'pfilldem_fn' in sys_parms:
+        sys_parms1['pfilldem_fn'] = ["", "Filled dem file", "Enter a tif filename to write the filled DEM file to (if filled)"]
+    else:
+        sys_parms1['pfilldem_fn'] = sys_parms['pfilldem_fn']
+
+    if not 'pfilldemdiff_fn' in sys_parms:
+        sys_parms1['pfilldemdiff_fn'] = ["", "Filled dem file differences", "Enter a tif filename to write the differences in the filled DEM file to (if filled)"]
+    else:
+        sys_parms1['pfilldemdiff_fn'] = sys_parms['pfilldemdiff_fn']
 
     if not 'wipcsv' in sys_parms:
-        sys_parms['wipcsv'] = ["", "Write Initiation Points to csv", "Enter a csv file name to write initiation points to csv as well as the gpkg file"]
+        sys_parms1['wipcsv'] = ["", "Write Initiation Points to csv", "Enter a csv file name to write initiation points to csv as well as the gpkg file"]
+    else:
+        sys_parms1['wipcsv']  = sys_parms['wipcsv']
 
     if not 'ripcsv' in sys_parms:
-        sys_parms['ripcsv'] = ["", "Read Inititiation Points from csv", "Enter a csv file name to read initiation points this file instead of the gpkg file"]
+        sys_parms1['ripcsv'] = ["", "Read Inititiation Points from csv", "Enter a csv file name to read initiation points this file instead of the gpkg file"]
+    else:
+        sys_parms1['ripcsv'] = sys_parms['ripcsv']
 
     if not 'userowcol' in sys_parms:
-        sys_parms['userowcol'] = [False, "Use Row/Column", "Uses the row/colum if the intitation points are loaded from csv file; otherwise uses lat/lon"]
+        sys_parms1['userowcol'] = [False, "Use Row/Column", "Uses the row/colum if the intitation points are loaded from csv file; otherwise uses lat/lon"]
+    else:
+        sys_parms1['userowcol'] = sys_parms['userowcol']
 
     if not 'ecraw_fn' in sys_parms:
-        sys_parms['ecraw_fn'] = ["", "Energy Cone - Raw file", "Enter a tif filename to write the raw energy cone to"]
+        sys_parms1['ecraw_fn'] = ["", "Energy Cone - Raw file", "Enter a tif filename to write the raw energy cone to"]
+    else:
+        sys_parms1['ecraw_fn'] = sys_parms['ecraw_fn']
 
     if not 'ecfilled_fn' in sys_parms:
-        sys_parms['ecfilled_fn'] = ["", "Energy Cone - Filled file", "Enter a tif filename to write the filled energy cone to"]
+        sys_parms1['ecfilled_fn'] = ["", "Energy Cone - Filled file", "Enter a tif filename to write the filled energy cone to"]
+    else:
+        sys_parms1['ecfilled_fn'] = sys_parms['ecfilled_fn']
 
     if not 'ec_fn' in sys_parms:
-        sys_parms['ec_fn'] = ["", "Write Energy Cone Line points to csv", "Enter a csv file name to write the energy cone line points to csv"]
+        sys_parms1['ec_fn'] = ["", "Write Energy Cone Line points to csv", "Enter a csv file name to write the energy cone line points to csv"]
+    else:
+        sys_parms1['ec_fn'] = sys_parms['ec_fn']
 
     if not 'povr_hl_ratio' in sys_parms:
-        sys_parms['povr_hl_ratio'] = [True, "Override H/L Ratio limits", "Check to override limit on HL Ratios of values between 0.2 and 0.3"]
+        sys_parms1['povr_hl_ratio'] = [True, "Override H/L Ratio limits", "Check to override limit on HL Ratios of values between 0.2 and 0.3"]
+    else:
+        sys_parms1['povr_hl_ratio'] = sys_parms['povr_hl_ratio']
 
     if not 'pwritetif' in sys_parms:
-        sys_parms['pwritetif'] = [True, "Output as tif", "Write all output as tif files"]
+        sys_parms1['pwritetif'] = [True, "Output as tif", "Write all output as tif files"]
+    else:
+        sys_parms1['pwritetif'] = sys_parms['pwritetif']
 
     if not 'pwriteascii' in sys_parms:
-        sys_parms['pwriteascii'] = [False, "Output as ascii", "Write all output as ascii files (additionally)"]
+        sys_parms1['pwriteascii'] = [False, "Output as ascii", "Write all output as ascii files (additionally)"]
+    else:
+        sys_parms1['pwriteascii'] = sys_parms['pwriteascii']
 
     if not 'pwritecsv' in sys_parms:
-        sys_parms['pwritecsv'] = [False, "Output as csv", "Write all output as csv files (additionally)"]
+        sys_parms1['pwritecsv'] = [False, "Output as csv", "Write all output as csv files (additionally)"]
+    else:
+        sys_parms1['pwritecsv'] = sys_parms['pwritecsv']
 
     if not 'pscenario_values' in sys_parms:
-        sys_parms['pscenario_values'] = [['Lahar', 'Debris', 'Pyroclastic', 'Custom'], "Flow scenarios", "List of types of flow. Include Custom as the last entry to enable customised parameters"]
+        sys_parms1['pscenario_values'] = [['Lahar', 'Debris', 'Pyroclastic', 'Custom'], "Flow scenarios", "List of types of flow. Include Custom as the last entry to enable customised parameters"]
+    else:
+        sys_parms1['pscenario_values'] = sys_parms['pscenario_values']
 
     if not 'pc1_values' in sys_parms:
-        sys_parms['pc1_values'] = [[0.05,0.1, 0.05], "Co-efficent #1", "Proportionality coefficient for the cross sectional area"] 
+        sys_parms1['pc1_values'] = [[0.05,0.1, 0.05], "Co-efficent #1", "Proportionality coefficient for the cross sectional area"] 
+    else:
+        sys_parms1['pc1_values'] = sys_parms['pc1_values']
 
     if not 'pc2_values' in sys_parms:
-        sys_parms['pc2_values'] = [[200, 20, 35], "Co-efficent #2", "Proportionality coefficient for the planar area"]
+        sys_parms1['pc2_values'] = [[200, 20, 35], "Co-efficent #2", "Proportionality coefficient for the planar area"]
+    else:
+        sys_parms1['pc2_values'] = sys_parms['pc2_values']
 
     if not 'dy' in sys_parms:
-        sys_parms['dy'] = [float(1), "Height increment", "Height increment used to calculate flows"]
+        sys_parms1['dy'] = [float(1), "Height increment", "Height increment used to calculate flows"]
+    else:
+        sys_parms1['dy'] = sys_parms['dy']
 
     if not 'pxsec_fn' in sys_parms:
-        sys_parms['pxsec_fn'] = ["", "Lahar Points", "Enter a csv filename to write the points on the lahar for the ip and volume specified below"]
+        sys_parms1['pxsec_fn'] = ["", "Lahar Points", "Enter a csv filename to write the points on the lahar for the ip and volume specified below"]
+    else:
+        sys_parms1['pxsec_fn'] = sys_parms['pxsec_fn']
 
     if not 'pplotxsecarea' in sys_parms:
-        sys_parms['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area for the ip and volume specified below"]
+        sys_parms1['pplotxsecarea'] = [False, "Plot cross sectional area graphics", "Select to plot graphics of the cross sectional area for the ip and volume specified below"]
+    else:
+        sys_parms1['pplotxsecarea'] = sys_parms['pplotxsecarea']
 
     if not 'pxsecareadir' in sys_parms:
-        sys_parms['pxsecareadir'] = ["CrossSections", "Cross Sectional Area Directory", "Directory in which cross sectional area graphics will be placed"]
+        sys_parms1['pxsecareadir'] = ["CrossSections", "Cross Sectional Area Directory", "Directory in which cross sectional area graphics will be placed"]
+    else:
+        sys_parms1['pxsecareadir'] = sys_parms['pxsecareadir']
 
     if not 'pplanararea_fn' in sys_parms:
-        sys_parms['pplanararea_fn'] = ["", "Planar area log", "Enter a csv filename to log details of the planar area for the ip and volume specified below"]
+        sys_parms1['pplanararea_fn'] = ["", "Planar area log", "Enter a csv filename to log details of the planar area for the ip and volume specified below"]
+    else:
+        sys_parms1['pplanararea_fn'] = sys_parms['pplanararea_fn']
 
     if not 'pplotip' in sys_parms:
-        sys_parms['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area and/or planar area eg IP01"]
+        sys_parms1['pplotip'] = ["", "Initiation Point", "Initiation point for cross sectional area and/or planar area eg IP01"]
+    else:
+        sys_parms1['pplotip'] = sys_parms['pplotip']
 
     if not 'pplotvol' in sys_parms:
-        sys_parms['pplotvol'] = ["", "Volume", "Volume for cross sectional area and/or planar area eg 1e5"]
+        sys_parms1['pplotvol'] = ["", "Volume", "Volume for cross sectional area and/or planar area eg 1e5"]
+    else:
+        sys_parms1['pplotvol'] = sys_parms['pplotvol']
 
+    sys_parms = sys_parms1
     pickle.dump(sys_parms, open(os.sep.join([os.getcwd(), "sys_parameters.pickle"]), "wb"))
     return sys_parms
+
+def edge(i, v, nodata):
+    x_max = v.shape[1]-1
+    y_max = v.shape[0]-1
+    x = i[1]
+    y = i[0]
+
+    # origin top left
+    # a b c
+    # d e f
+    # g h i
+
+    # a
+    ea = False
+    if x>0 and y >0:
+        if v[y-1,x-1] == nodata:
+            ea = True
+    else:
+        ea = True
+
+    #b         
+    eb = False
+    if y >0:
+        if v[y-1,x] == nodata:
+            eb = True
+    else:
+        eb = True
+
+    #c
+    ec = False
+    if y >0 and x < x_max:
+        if v[y-1,x+1] == nodata:
+            ec = True
+    else:
+        ec = True
+
+    #d
+    ed = False
+    if x >0:
+        if v[y,x-1] == nodata:
+            ed = True
+    else:
+        ed = True
+
+    #f
+    ef = False
+    if x < x_max:
+        if v[y,x+1] == nodata:
+            ef = True
+    else:
+        ef = True
+
+    # g
+    eg = False
+    if x>0 and y <y_max:
+        if v[y+1,x-1] == nodata:
+            eg = True
+    else:
+        eg = True
+
+    #h
+    eh = False
+    if y <y_max:
+        if v[y+1,x] == nodata:
+            eh = True
+    else:
+        eh = True
+
+    #i
+    ei = False
+    if y <y_max and x < x_max:
+        if v[y+1,x+1] == nodata:
+            ei = True
+    else:
+        ei = True
+    
+    return True in {ea, eb, ec, ed, ef, eg, eh, ei}
 
 
 ########################################################################################################################################

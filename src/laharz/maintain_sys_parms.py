@@ -1,4 +1,4 @@
-__version__ = '2.1.2'
+__version__ = '2.1.3'
 import tkinter as tk
 import os
 from tkinter import ttk as ttk
@@ -141,7 +141,7 @@ class mlsp_app(tk.Tk):
                     v[i].insert(0, sys_parms[p][0])
                     errors = error or errors
 
-                if p in {'ecraw_fn', 'ecfilled_fn'}:
+                if p in {'ecraw_fn', 'ecfilled_fn', 'pfilldem_fn', 'pfilldemdiff_fn'}:
                     sys_parms[p][0], error, cf, l[i]['text'] = \
                         validate_file_to_write(v[i].get(), extend = 'tif', type = 'tif')
                     v[i].delete(0, "end")

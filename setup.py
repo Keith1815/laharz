@@ -21,12 +21,12 @@ setup(
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    version='2.1.2',  # Required
+    version='2.1.3',  # Required
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description='Creates tif maps of lahars using QGIS',  # Optional
+    description='Creates tif maps of lahars and other flows',  # Optional
 
 
     # This is an optional longer description of your project that represents

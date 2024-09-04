@@ -12,6 +12,6 @@ See the documenation for more details. A full user guide is provided.
 
 Keith Blair
 laharz@hotmail.com
-July 2024
-Version 2.1.2a
+August 2024
+Version 2.1.3
 
