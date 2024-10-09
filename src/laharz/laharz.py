@@ -41,6 +41,7 @@
 # Laharz v2.1.3 - copes with poorly defined edges, no data etc. Primarily to support Mark Bemelmans work with the sandbox
 #               - option to choose whether to fill the dem or not
 #               - option to write the filled DEM to a tif file
+##### build 2   - fix to text vs float for custom coefficients
 # ==================================================================================================================================================================================
 __version__ = "2.1.3"
 import tkinter as tk
@@ -1928,6 +1929,7 @@ class LaharZ_app(tk.Tk):
             self.tk_pscenario.bind("<<ComboboxSelected>>", select_scenario)
 
         def select_scenario(eventObject):
+            # called every time a scenario is selected
             self.pscenario = self.tk_pscenario.get()
             format_c1()
             format_c2()
@@ -2084,6 +2086,8 @@ class LaharZ_app(tk.Tk):
 
             if error:
                 self.tk_pc1_value_msg['fg'] = "red"
+            else:
+                self.pc1_value = str(self.pc1_value) #displayed as strings for historical reasons :(
             return error
 
         def validate_c2():
@@ -2094,6 +2098,8 @@ class LaharZ_app(tk.Tk):
 
             if error:
                 self.tk_pc2_value_msg['fg'] = "red"
+            else:
+                self.pc2_value = str(self.pc2_value) #displayed as strings for historical reasons :(
             return error
 
         def validate_sea_level():
