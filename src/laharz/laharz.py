@@ -41,9 +41,13 @@
 # Laharz v2.1.3 - copes with poorly defined edges, no data etc. Primarily to support Mark Bemelmans work with the sandbox
 #               - option to choose whether to fill the dem or not
 #               - option to write the filled DEM to a tif file
-##### build 2   - fix to text vs float for custom coefficients
+# Laharz v2.1.4 - polygons for flows and energy cone
+#               - file locking for vector files
+#               - horizontal scroll bars
+#               - custom flow co-efficients string vs numeric error corrected
+#               - weird data type error on cotopaxi
 # ==================================================================================================================================================================================
-__version__ = "2.1.3"
+__version__ = "2.1.4"
 import tkinter as tk
 import os
 from pathlib import Path
@@ -62,7 +66,7 @@ from scipy.ndimage import binary_erosion, binary_fill_holes
 import csv
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 from importlib.resources import files, as_file
-from osgeo import gdal  # conda install gdal
+from osgeo import gdal, ogr, osr  # conda install gdal
 import richdem as rd   #https://richdem.readthedocs.io/en/latest/
 import pyproj as pj
 
@@ -83,23 +87,28 @@ class LaharZ_app(tk.Tk):
 
         # Add a canvas in that frame.
         self.canvas = tk.Canvas(m_frame) #, width = 1980, height = 1080)
-        self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
         self.canvas.columnconfigure(0, weight = 1)
         self.canvas.rowconfigure(0, weight = 1)
+        self.canvas.grid(row = 0, column = 0, padx = 10, pady = 10, sticky=tk.NSEW)
+        # self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
 
         # # Create a vertical scrollbar linked to the canvas.
-        vsbar = tk.Scrollbar(self.canvas, orient=tk.VERTICAL, command=self.canvas.yview)
+        vsbar = tk.Scrollbar(m_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         vsbar.grid(row=0, column = 1, sticky=tk.NS)
         self.canvas.configure(yscrollcommand=vsbar.set)
+
+        # # Create a horizontal scrollbar linked to the canvas.
+        hsbar = tk.Scrollbar(m_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
+        hsbar.grid(row=1, column = 0, sticky=tk.EW)
+        self.canvas.configure(xscrollcommand=hsbar.set)
 
         self.sts_msg = "Welcome to LaharZ"
         self.sts_msg2 = "Activities will be logged in " + log_fn
         self.exec_frame0() #splash
         self.exec_frame1() #populate widgets
 
-    def exec_frame0(self):
+    def exec_frame0(self): #splash Screen
         # Create a frame on the canvas to contain the widgets
         f1 = tk.Frame(self.canvas, width = 600, height = 346)
         f1.columnconfigure(0, weight = 1)
@@ -137,7 +146,7 @@ class LaharZ_app(tk.Tk):
         self.canvas.update()
         f1.after(3000, f1.destroy())
 
-    def exec_frame1(self):
+    def exec_frame1(self): # initial screen
 
         def create_frame():
             # Create a frame on the canvas to contain the widgets
@@ -285,7 +294,7 @@ class LaharZ_app(tk.Tk):
             self.tk_pfill_DEM = tk.BooleanVar(value = self.pfill_DEM)
             self.tk_pfill_DEM_chk = tk.Checkbutton(self.frame, text='Fill DEM file', font=('Helvetica', 12), variable=self.tk_pfill_DEM, command = choose_fill_DEM)
             self.tk_pfill_DEM_chk.grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
-            self.tk_pfill_DEM_msg = tk.Label(self.frame, text = 'Check to fill the DEM file', font=('Helvetica', 12))
+            self.tk_pfill_DEM_msg = tk.Label(self.frame, text = 'Check to fill the DEM file (recommended)', font=('Helvetica', 12))
             self.tk_pfill_DEM_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
             # self.tk_pfill_DEM_label = tk.Label(self.frame, text = '', font=('Helvetica', 12)).grid(row=r+1, column = 0, padx = 10, columnspan=1, sticky='W')
 
@@ -754,6 +763,18 @@ class LaharZ_app(tk.Tk):
             self.tk_pecline_fn_msg = tk.Label(self.frame, text='Name of the file for the energy cone line in ' + self.pwdir, font=('Helvetica', 12))
             self.tk_pecline_fn_msg.grid(row=r+1, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
 
+        def prox_haz_zn_file(r):
+            self.tk_pprox_haz_zn_fn_lbl =  tk.Label(self.frame, text='Proximal Hazard Zone File', font=('Helvetica', 12))
+            self.tk_pprox_haz_zn_fn_lbl.grid(row=r+1, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_phz_ow = tk.BooleanVar(value = self.phz_ow)
+            tk.Checkbutton(self.frame, text='', font=('Helvetica', 12), variable=self.tk_phz_ow).grid(row=r+1, column = 1, padx = 10, columnspan=1, sticky='W')
+
+            self.tk_pprox_haz_zn_fn = tk.Entry(self.frame, font=('Helvetica', 12))
+            self.tk_pprox_haz_zn_fn.grid(row=r+1, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_pprox_haz_zn_fn.insert(0, self.pprox_haz_zn_fn)
+            self.tk_pprox_haz_zn_fn_msg = tk.Label(self.frame, text='Name of the file for the proximal hazard zone in ' + self.pwdir, font=('Helvetica', 12))
+            self.tk_pprox_haz_zn_fn_msg.grid(row=r+1, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
+
         def initpoints_file(r):
             self.tk_pinitpoints_fn_lbl =  tk.Label(self.frame, text='Initiation Points File', font=('Helvetica', 12))
             self.tk_pinitpoints_fn_lbl.grid(row=r+1, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
@@ -794,7 +815,7 @@ class LaharZ_app(tk.Tk):
             error2 = []
             cancel_flag = []
             i = 0
-            while i <5 and not any(cancel_flag):
+            while i <6 and not any(cancel_flag):
                 if i == 0:
                     e, cf = validate_thal() 
                 if i == 1:
@@ -805,11 +826,13 @@ class LaharZ_app(tk.Tk):
                 if i == 2:
                     e, cf = validate_ecline_file()
                 if i == 3:
+                    e, cf = validate_prox_haz_zn_file()
+                if i == 4:
                     if self.pplot_mesh:
                         e, cf = validate_ec_graphics_fn()
                     else:
                         e, cf = False, False
-                if i == 4:
+                if i == 5:
                     e, cf = validate_initpoints_file()
 
                 error2.append(e)
@@ -1160,6 +1183,23 @@ class LaharZ_app(tk.Tk):
             else:
                 return False, False
 
+        def validate_prox_haz_zn_file():
+            self.tk_pprox_haz_zn_fn_msg['text'] = ""
+            self.pprox_haz_zn_fn = self.tk_pprox_haz_zn_fn.get()
+            if self.pprox_haz_zn_fn != self.pow_prox_haz_zn_fn and self.pprox_haz_zn_fn != "":
+                self.phz_ow = self.tk_phz_ow.get()
+                self.pprox_haz_zn_fn, error, cancel_flag, self.tk_pprox_haz_zn_fn_msg['text'] = \
+                    validate_file_to_write(self.pprox_haz_zn_fn, self.pwdir, self.frame, "Proximal Hazard Zone file", extend = 'gpkg', type = 'gpkg', exists = self.phz_ow)
+                self.tk_pprox_haz_zn_fn.delete(0, "end") #update file name on screen post validation
+                self.tk_pprox_haz_zn_fn.insert(0, self.pprox_haz_zn_fn)
+                if not error and not cancel_flag:
+                    self.pow_prox_haz_zn_fn = self.pprox_haz_zn_fn
+                if error:
+                    self.tk_pprox_haz_zn_fn_msg['fg'] = "red"
+                return error, cancel_flag
+            else:
+                return False, False
+
         def validate_initpoints_file():
             self.tk_pinitpoints_fn_msg['text'] = ""
             self.pinitpoints_fn = self.tk_pinitpoints_fn.get()
@@ -1191,6 +1231,7 @@ class LaharZ_app(tk.Tk):
             self.parameters['phlratio'] = self.phlratio
             self.parameters['psea_level'] = self.psea_level
             self.parameters['pecline_fn'] = self.pecline_fn
+            self.parameters['pprox_haz_zn_fn'] = self.pprox_haz_zn_fn
             self.parameters['pinitpoints_fn'] = self.pinitpoints_fn
             self.parameters['pplot_mesh'] = self.pplot_mesh
             self.parameters['pec_graphics_fn'] = self.pec_graphics_fn
@@ -1201,6 +1242,7 @@ class LaharZ_app(tk.Tk):
             self.parameters['psf_ow'] = self.psf_ow
             self.parameters['pecgf_ow'] = self.pecgf_ow
             self.parameters['pec_ow'] = self.pec_ow
+            self.parameters['phz_ow'] = self.phz_ow
             self.parameters['pip_ow'] = self.pip_ow
             self.parameters['pthal_ow'] = self.pthal_ow
             self.parameters['pflow_ow'] = self.pflow_ow
@@ -1213,7 +1255,6 @@ class LaharZ_app(tk.Tk):
                 self.parameters = pickle.load(open(os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), "parameters.pickle"]), "rb"))
             except:
                 self.parameters = {}
-
             try:
                 self.pdem_fn = self.parameters['pdem_fn']
             except:
@@ -1271,6 +1312,10 @@ class LaharZ_app(tk.Tk):
             except:
                 self.pecline_fn = "ec_line.tif"
             try:
+                self.pprox_haz_zn_fn = self.parameters['pprox_haz_zn_fn']
+            except:
+                self.pprox_haz_zn_fn = "prox_hz_zn.gpkg"
+            try:
                 self.pplot_mesh = self.parameters['pplot_mesh']
             except:
                 self.pplot_mesh = True
@@ -1307,6 +1352,11 @@ class LaharZ_app(tk.Tk):
             except:
                 self.pec_ow = True
             try:
+                self.phz_ow = self.parameters['phz_ow']
+            except:
+                self.phz_ow = True
+
+            try:
                 self.pip_ow = self.parameters['pip_ow']
             except:
                 self.pip_ow = True
@@ -1319,10 +1369,12 @@ class LaharZ_app(tk.Tk):
             except:
                 self.pflow_ow = True
 
+            # previous file names for overwrite
             self.pow_thal_fn = ""
             self.pow_flow_fn = ""
             self.pow_search_fn = ""
             self.pow_ecline_fn = ""
+            self.pow_prox_haz_zn_fn = ""
             self.pow_ec_graphics_fn = ""
             self.pow_initpoints_fn = ""
 
@@ -1418,7 +1470,15 @@ class LaharZ_app(tk.Tk):
                 pec_graphics_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pec_graphics_fn])
                 pmesh_extent = float(self.pmesh_extent)
                 pinitpoints_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pinitpoints_fn])
-                pecline_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pecline_fn])
+                if self.pecline_fn != "":
+                    pecline_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pecline_fn])
+                else:
+                    pecline_fn = ""
+
+                if self.pprox_haz_zn_fn !="":
+                    pprox_haz_zn_fn = os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), self.pprox_haz_zn_fn])
+                else:
+                    pprox_haz_zn_fn = ""
 
                 log_msg("Parameters", screen_op = False)
                 log_msg('Parameter: pwdir; Working directory; Value: ' + pwdir, screen_op = False)
@@ -1440,6 +1500,7 @@ class LaharZ_app(tk.Tk):
                 log_msg('Parameter: pec_graphics_fn; Energy Cone Graphics file; Value: ' + pec_graphics_fn, screen_op = False)
                 log_msg('Parameter: pmesh_extent; Graphics Extent; Value: ' + str(pmesh_extent), screen_op = False)
                 log_msg('Parameter: pecline_fn; Energy Cone file; Value: ' + pecline_fn, screen_op = False)
+                log_msg('Parameter: pprox_haz_zn_fn; Proximal Hazard Zone file; Value: ' + pprox_haz_zn_fn, screen_op = False)
                 log_msg('Parameter: pinitpoints_fn; Inititation Points file; Value: ' + pinitpoints_fn, screen_op = False)
 
                 log_msg("Loading DEM...", frame = self)
@@ -1638,6 +1699,15 @@ class LaharZ_app(tk.Tk):
                         log_msg('Saving filled energy cone in ' + ecfilled_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
                         return True
 
+                if pprox_haz_zn_fn !="":
+                    log_msg("Generating Proximal Hazard Zone...", frame = self)                    
+                    try:
+                        HazardVector(pprox_haz_zn_fn, ecfilled_v, dem_transform, dem_f.crs)
+                    except:
+                        log_msg('Saving proximal hazard zone in ' + pprox_haz_zn_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                        return True
+
+
                 log_msg("Generating Energy Cone Line...", frame = self)
                 ecline_v = binary_erosion(input=ecfilled_v)
                 ecline_v = np.logical_and(ecraw_v, np.logical_not(ecline_v))
@@ -1649,12 +1719,13 @@ class LaharZ_app(tk.Tk):
                     if edge(i, dem_v, dem_profile['nodata']):
                         ecline_v[tuple(i)] = 0
 
-                log_msg("Saving energy line to: " + pecline_fn, screen_op=False)
-                try: 
-                    SaveFile(pecline_fn, dem_profile, dem_crs, ecline_v)
-                except:
-                    log_msg('Saving energy line in ' + pecline_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
-                    return True
+                if pecline_fn !="":
+                    log_msg("Saving energy line to: " + pecline_fn, screen_op=False)
+                    try: 
+                        SaveFile(pecline_fn, dem_profile, dem_crs, ecline_v)
+                    except:
+                        log_msg('Saving energy line in ' + pecline_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True)
+                        return True
 
                 # inititiation points
                 ec_points = np.argwhere(ecline_v == 1)
@@ -1850,6 +1921,7 @@ class LaharZ_app(tk.Tk):
             overwrite_message2(103)
 
         ecline_file(118)
+        prox_haz_zn_file(119)
         initpoints_file(120)
         ip_button(200)
         back_button(200)
@@ -2007,8 +2079,22 @@ class LaharZ_app(tk.Tk):
             self.tk_plahar_dir = tk.Entry(self.frame, font=('Helvetica', 12))
             self.tk_plahar_dir.grid(row=r, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
             self.tk_plahar_dir.insert(0, self.plahar_dir)
-            self.tk_plahar_dir_msg = tk.Label(self.frame, text='Directory for flow output files',font=('Helvetica', 12))
+            self.tk_plahar_dir_msg = tk.Label(self.frame, text='Directory for flow output raster files',font=('Helvetica', 12))
             self.tk_plahar_dir_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
+            # tk.Label(self.frame, text = '' , font=('Helvetica', 12)).grid(row=r+1, column=0, padx = 10, pady = 3, columnspan=1, sticky='W')
+
+        def flow_vector_file(r):
+            # tk.Label(self.frame, text = 'Uncheck box to disable overwite check', font=('Helvetica', 10, 'italic')).grid(row=r-1, column = 1, padx = 10, columnspan=2, sticky='W')
+            self.tk_pflow_vector_fn_lbl = tk.Label(self.frame, text='Flow output vector file', font=('Helvetica', 12))
+            self.tk_pflow_vector_fn_lbl.grid(row=r, column = 0, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_fv_ow = tk.BooleanVar(value = self.pfv_ow)
+            self.tk_fv_ow_chk = tk.Checkbutton(self.frame, text='', font=('Helvetica', 12), variable=self.tk_fv_ow).grid(row=r, column = 1, padx = 10, columnspan=1, sticky='W')
+
+            self.tk_pflow_vector_fn = tk.Entry(self.frame, font=('Helvetica', 12))
+            self.tk_pflow_vector_fn.grid(row=r, column = 2, padx = 10, pady = 3, columnspan=1, sticky='W')
+            self.tk_pflow_vector_fn.insert(0, self.pflow_vector_fn)
+            self.tk_pflow_vector_fn_msg = tk.Label(self.frame, text='File name for flow vector file',font=('Helvetica', 12))
+            self.tk_pflow_vector_fn_msg.grid(row=r, column = 3, padx = 10, pady = 3, columnspan=1, sticky='W')
             tk.Label(self.frame, text = '' , font=('Helvetica', 12)).grid(row=r+1, column=0, padx = 10, pady = 3, columnspan=1, sticky='W')
 
         def validate_DEM():
@@ -2079,6 +2165,7 @@ class LaharZ_app(tk.Tk):
             return error
 
         def validate_c1():
+            #only called for custom
             self.tk_pc1_value_msg['text'] = ""
 
             self.pc1_value = self.tk_pc1_value.get()
@@ -2091,6 +2178,7 @@ class LaharZ_app(tk.Tk):
             return error
 
         def validate_c2():
+            #only caled for custom
             self.tk_pc2_value_msg['text'] = ""
 
             self.pc2_value = self.tk_pc2_value.get()
@@ -2117,12 +2205,40 @@ class LaharZ_app(tk.Tk):
             self.tk_plahar_dir_msg['text'] = ""
             self.pld_ow = self.tk_ld_ow.get()
             self.plahar_dir = self.tk_plahar_dir.get()
-            self.plahar_dir, error, cancel_flag, self.tk_plahar_dir_msg['text'] = validate_dir_to_write(self.plahar_dir, self.pwdir, self.frame, "Flow output directory", exists = self.pld_ow)
-            self.tk_plahar_dir.delete(0, "end") #update file name on screen post validation
-            self.tk_plahar_dir.insert(0, self.plahar_dir)
+            if self.plahar_dir !="":
+                self.plahar_dir, error, cancel_flag, self.tk_plahar_dir_msg['text'] = validate_dir_to_write(self.plahar_dir, self.pwdir, self.frame, "Flow output directory", exists = self.pld_ow)
+                self.tk_plahar_dir.delete(0, "end") #update file name on screen post validation
+                self.tk_plahar_dir.insert(0, self.plahar_dir)
+                if error:
+                    self.tk_plahar_dir_msg['fg'] = "red"
+            else:
+                error = False
+                cancel_flag = False
 
             if error:
                 self.tk_plahar_dir_msg['fg'] = "red"
+            return error, cancel_flag
+
+        def validate_flow_vector_fn():
+            self.tk_pflow_vector_fn_msg['text'] = ""
+            self.pfv_ow = self.tk_fv_ow.get()
+            self.pflow_vector_fn = self.tk_pflow_vector_fn.get()
+            if self.pflow_vector_fn != "":
+                self.pflow_vector_fn, error, cancel_flag, self.tk_pflow_vector_fn_msg['text'] = \
+                    validate_file_to_write(self.pflow_vector_fn, self.pwdir, self.frame, "Flow Vector File", extend = 'gpkg', type = "gpkg", exists = self.pfv_ow)
+                self.tk_pflow_vector_fn.delete(0, "end") #update file name on screen post validation
+                self.tk_pflow_vector_fn.insert(0, self.pflow_vector_fn)
+                if error:
+                    self.tk_pflow_vector_fn_msg['fg'] = "red"
+            else:
+                error = False
+                cancel_flag = False
+                if self.plahar_dir == "":
+                    error = True
+                    self.tk_plahar_dir_msg['text'] = "Choose either a directory for the raster files or..."
+                    self.tk_pflow_vector_fn_msg['text'] = "...a file for the vector file"
+                    self.tk_plahar_dir_msg['fg'] = "red"
+                    self.tk_pflow_vector_fn_msg['fg'] = "red"
             return error, cancel_flag
 
         def back_button(r):
@@ -2186,14 +2302,27 @@ class LaharZ_app(tk.Tk):
             if self.pscenario == 'Custom':
                 error = True in {error, validate_c1(), validate_c2()}
 
-            e, cf = validate_lahar_dir()
-            error = error or e
+            error2 = []
+            cancel_flag = []
+            i = 0
+            while i <2 and not any(cancel_flag):
+                if i == 0:
+                    e, cf = validate_lahar_dir()
 
-            if error:
+                if i == 1:
+                    e, cf = validate_flow_vector_fn()
+
+                error = error or e
+                error2.append(e)
+                cancel_flag.append(cf)
+                i += 1
+
+
+            if error or any(error2):
                 self.tk_statusmsg["text"] = "Please correct errors before continuing"
                 self.tk_statusmsg['fg'] = "red"
             else:
-                if not cf:
+                if not any(cancel_flag):
                     freeze_list = []
                     for child in self.frame.winfo_children():
                         freeze_list.append([child, child.cget('state')])
@@ -2210,7 +2339,6 @@ class LaharZ_app(tk.Tk):
                         # unfreeze frame
                         for i in freeze_list:
                             i[0].configure(state=i[1])
-
             return
 
         def save_parameters():
@@ -2225,7 +2353,9 @@ class LaharZ_app(tk.Tk):
             self.parameters['pc2_value'] = self.pc2_value
             self.parameters['psea_level'] = self.psea_level
             self.parameters['plahar_dir'] = self.plahar_dir
+            self.parameters['pflow_vector_fn'] = self.pflow_vector_fn
             self.parameters['pld_ow'] = self.pld_ow
+            self.parameters['pfv_ow'] = self.pfv_ow
             pickle.dump(self.parameters, open(os.sep.join([os.sep.join([os.getcwd(), self.pwdir]), "parameters.pickle"]), "wb"))
 
         def load_parameters():
@@ -2276,11 +2406,19 @@ class LaharZ_app(tk.Tk):
             try:
                 self.plahar_dir = self.parameters['plahar_dir']
             except:
-                self.plahar_dir = "lahars"
+                self.plahar_dir = ""
+            try:
+                self.pflow_vector_fn = self.parameters['pflow_vector_fn']
+            except:
+                self.pflow_vector_fn = ""
             try:
                 self.pld_ow = self.parameters['pld_ow']
             except:
                 self.pld_ow = True
+            try:
+                self.pfv_ow = self.parameters['fv_ow']
+            except:
+                self.pfv_ow = True
 
         def gen_lahars():
             class lhpoint(object):
@@ -2622,7 +2760,7 @@ class LaharZ_app(tk.Tk):
                 log_msg("Planar area limit: {}".format(plan_area_limit))
  
                 dy = 1  # Increment of elevation in m
-                innund = np.zeros_like(dem_v).astype(int)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
+                innund = np.zeros_like(dem_v).astype(np.uint16)  # Defines a zeros rasters where the inundation cells will be writen as 1's values.
                 plan_area = 0
 
                 plotcsv = False
@@ -2768,29 +2906,39 @@ class LaharZ_app(tk.Tk):
             self.psea_level += 0.001
             log_msg('Parameter: psea_level; Sea Level (plus tolerance); Value: ' + str(self.psea_level), screen_op = False)
             log_msg('Parameter: plahar_dir; Flow output directory; Value: ' + self.plahar_dir, screen_op = False)
+            log_msg('Parameter: pflow_vector_fn; Flow vector file; Value: ' + self.pflow_vector_fn, screen_op = False)
 
             log_msg("Preparing flow directory", frame = self)
-            plahar_dir = os.sep.join([os.getcwd(),self.pwdir, self.plahar_dir])
+            if self.plahar_dir != "":
+                plahar_dir = os.sep.join([os.getcwd(),self.pwdir, self.plahar_dir])
 
-            # If folder doesn't exist, then create it.
-            if not os.path.isdir(plahar_dir):
-                os.makedirs(plahar_dir)
-            else:
-                files = [f for f in os.listdir(plahar_dir) if os.path.isfile(os.path.join(plahar_dir, f))]
-                for fname in files:
+                # If folder doesn't exist, then create it.
+                if not os.path.isdir(plahar_dir):
+                    os.makedirs(plahar_dir)
+                else:
+                    files = [f for f in os.listdir(plahar_dir) if os.path.isfile(os.path.join(plahar_dir, f))]
+                    for fname in files:
+                        try:
+                            log_msg("Removing file {} from flow directory {}".format(fname, self.plahar_dir), screen_op = False)
+                            os.remove(os.sep.join([plahar_dir, fname]))
+                        except: #maybe to use OSError as eception type
+                            log_msg("Error: whilst deleting previous files from directory {} file {} unavailable - possibly locked in another application (eg QGIS)".format(self.plahar_dir, fname), errmsg = True, frame = self)
+                            return True
                     try:
-                        log_msg("Removing file {} from flow directory {}".format(fname, self.plahar_dir), screen_op = False)
-                        os.remove(os.sep.join([plahar_dir, fname]))
-                    except: #maybe to use OSError as eception type
-                        log_msg("Error: whilst deleting previous files from directory {} file {} unavailable - possibly locked in another application (eg QGIS)".format(self.plahar_dir, fname), errmsg = True, frame = self)
+                        os.rmdir(plahar_dir)
+                    except:
+                        log_msg("Error: whilst deleting directory {} - possibly locked in another application (eg QGIS)".format(self.plahar_dir), errmsg = True, frame = self)
                         return True
-                try:
-                    os.rmdir(plahar_dir)
-                except:
-                    log_msg("Error: whilst deleting directory {} - possibly locked in another application (eg QGIS)".format(self.plahar_dir), errmsg = True, frame = self)
-                    return True
 
-                os.makedirs(plahar_dir)
+                    os.makedirs(plahar_dir)
+
+            else:
+                plahar_dir = ""
+
+            if self.pflow_vector_fn != "":
+                pflow_vector_fn = os.sep.join([os.getcwd(),self.pwdir, self.pflow_vector_fn])
+            else:
+                pflow_vector_fn = ""
 
             if sys_parms['pplotxsecarea'][0]:
                 log_msg("Preparing cross sectional area graphics directory", frame = self)
@@ -2905,36 +3053,55 @@ class LaharZ_app(tk.Tk):
 
                 # Calculate Lahars
                 log_msg("Generating Flows...", frame = self)
-                innund_total_v = np.zeros_like(dem_v).astype(np.uint)  # array for total innundations
+
+                if pflow_vector_fn !="":
+                    log_msg("Initialising flow vector file: {}".format(pflow_vector_fn), screen_op=False)
+                    try:
+                        gpkg_ds, raster_ds, spatial_ref = InitVector(pflow_vector_fn, *dem_v.shape, dem_transform, dem_f.crs)
+                    except:
+                        log_msg('Initialising ' + pflow_vector_fn + ' failed. Probably invalid permissions due to being locked in QGIS', frame = self, errmsg = True) 
+                        return True
+
+                innund_total_v = np.zeros_like(dem_v).astype(np.uint16)  # array for total innundations
                 for v1, v in enumerate(self.pvolume_value):
-                    innund_vol_v = np.zeros_like(dem_v).astype(np.uint)  # array for all innundations for a particular volume
+                    innund_vol_v = np.zeros_like(dem_v).astype(np.uint16)  # array for all innundations for a particular volume
 
                     for i, ip in enumerate(ips):
                         log_msg("Generating Flow. Initiation Point: {}/{}   Volume: {:.2e} {}/{} ".format(i + 1, len(ips), v, v1 + 1, len(self.pvolume_value)), frame = self)
                         error, innund_v = gen_lahar(v, ip)
                         if error:
                             return error
-
                         ofn = "{}-V{:.2e}".format(ip[0], v).replace("+", "").replace(".", "-")
                         log_msg("Created flow at {} Latitude: {} Longitude: {} Row: {} Column: {} Volume: {} Filename: {}".format(ip[0], ip[4], ip[3], ip[1], ip[2], v, ofn), screen_op=False)  # todo file extension?
 
-                        ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
-                        log_msg("Writing : {}".format(ofn), screen_op=False)
-                        SaveFile(ofn, dem_profile, dem_crs, innund_v)
-                        innund_vol_v = np.where(innund_vol_v == 0, innund_v * (i+1), innund_vol_v)  # add innundation for one initiation point and volume to the overall volume array
+                        if plahar_dir !="":
+                            ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
+                            log_msg("Writing raster: {}".format(ofn), screen_op=False)
+                            SaveFile(ofn, dem_profile, dem_crs, innund_v)
+                            innund_vol_v = np.where(innund_vol_v == 0, innund_v * (i+1), innund_vol_v)  # add innundation for one initiation point and volume to the overall volume array
 
-                    # save overall volume file
-                    ofn = "V{:.2e}".format(v).replace("+", "").replace(".", "-")
-                    ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
-                    log_msg("Writing : {}".format(ofn, ), screen_op=False)
-                    SaveFile(ofn, dem_profile, dem_crs, innund_vol_v)
-                    innund_total_v = np.where(innund_total_v == 0, (innund_vol_v > 0) * (v1 + 1), innund_total_v)  # add volume innundation to the total innundation
+                        if pflow_vector_fn !="":
+                            layer_name = "{}-{} V{:.2e}".format(ip[0], chr(v1+97), v).replace("+", "").replace(".", "-")
+                            log_msg("Writing vector layer: {} to {}".format(ofn, pflow_vector_fn), screen_op=False)
+                            SaveVector(gpkg_ds, raster_ds, spatial_ref, innund_v, v, ip[0], layer_name, chr(v1+97))
+
+                    if plahar_dir !="":
+                        # save overall volume file
+                        ofn = "V{:.2e}".format(v).replace("+", "").replace(".", "-")
+                        ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
+                        log_msg("Writing : {}".format(ofn, ), screen_op=False)
+                        SaveFile(ofn, dem_profile, dem_crs, innund_vol_v)
+                        innund_total_v = np.where(innund_total_v == 0, (innund_vol_v > 0) * (v1 + 1), innund_total_v)  # add volume innundation to the total innundation
 
                 # save total innundation array
-                ofn = "Total"
-                ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
-                log_msg("Writing : {}".format(ofn, ), screen_op=False)
-                SaveFile(ofn, dem_profile, dem_crs, innund_total_v)
+                if plahar_dir !="":
+                    ofn = "Total"
+                    ofn = os.sep.join([os.getcwd(), self.pwdir, self.plahar_dir, ofn])
+                    log_msg("Writing : {}".format(ofn), screen_op=False)
+                    SaveFile(ofn, dem_profile, dem_crs, innund_total_v)
+                if pflow_vector_fn !="":
+                    log_msg("Finalising {}".format(pflow_vector_fn), screen_op=False)
+                    raster_ds, gpkg_ds = FinaliseVector(raster_ds, gpkg_ds)
                 log_msg("Finished flow outputs", frame = self)
                 return False
             else:
@@ -2956,6 +3123,7 @@ class LaharZ_app(tk.Tk):
         display_formula(100)
         sea_level(110)
         lahar_dir(120)
+        flow_vector_file(125)
         back_button(130)
         lahar_button(130)
         status_msg(140)
@@ -3295,13 +3463,129 @@ def SaveFile(fn, ref_profile, ref_crs, v):
         f.write("xllcorner " + str(lon) + "\n")
         f.write("yllcorner " + str(lat) + "\n")
         f.write("cellsize " + str(ref_f.transform[0]) + "\n")
-        f.write("NODATA_value 255")
+        f.write("NODATA_value 0")
         for i in reversed(v):
             f.write(" ".join(map(str, map(int, i))) + "\n")
         f.close()
 
     if sys_parms['pwritecsv'][0]:
         np.savetxt(fn + ".csv", v, delimiter=",")
+
+def InitVector(gpkg_filename, rows, cols, trans, crs): #dem_transform
+    gpkg_driver = ogr.GetDriverByName("GPKG")
+    gpkg_ds = gpkg_driver.CreateDataSource(gpkg_filename)
+    driver = gdal.GetDriverByName('MEM')  # In-memory raster driver
+    raster_ds = driver.Create('', cols, rows, 1, gdal.GDT_Byte)  # 1 band, byte data type
+
+    # Set GeoTransform
+    raster_ds.SetGeoTransform((trans.c, trans.a, 0, trans.f, 0, trans.e))  # Example affine transform
+    # Define spatial reference (WGS 84 in this case, adjust as necessary)
+    spatial_ref = osr.SpatialReference()
+    # spatial_ref.ImportFromEPSG(4326)
+    spatial_ref.ImportFromWkt(crs.wkt)
+
+    return gpkg_ds, raster_ds, spatial_ref
+
+def SaveVector(gpkg_ds, raster_ds, spatial_ref, v, volume, ip, layer_name, v_id):
+    raster_band = raster_ds.GetRasterBand(1)
+    raster_band.WriteArray(v)
+    # Set NoData value
+    raster_band.SetNoDataValue(0)
+    # Convert the mask to a GDAL in-memory raster
+    driver_mem = gdal.GetDriverByName('MEM')
+    mask_dataset = driver_mem.Create('', raster_band.XSize, raster_band.YSize, 1, gdal.GDT_Byte)
+
+    for x in np.unique(v):
+        if x !=0:
+            # Create a layer for the polygons
+            layer = gpkg_ds.CreateLayer(layer_name, spatial_ref, ogr.wkbPolygon)
+            # Add an attribute field to the layer
+            volume_field = ogr.FieldDefn("Volume", ogr.OFTReal) # also OFTInteger
+            volume_field.SetWidth(50)
+            layer.CreateField(volume_field)
+
+            volume_id_field = ogr.FieldDefn("Volume_id", ogr.OFTString) # also OFTInteger
+            volume_id_field.SetWidth(50)
+            layer.CreateField(volume_id_field)
+
+            ip_field = ogr.FieldDefn("Initiation_Point", ogr.OFTString) # also OFTInteger
+            ip_field.SetWidth(50)
+            layer.CreateField(ip_field)
+
+            # Create a mask where the pixel value is 1
+            mask = np.equal(v, 1).astype(np.uint8)
+            mask_dataset.GetRasterBand(1).WriteArray(mask)
+            gdal.Polygonize(
+                raster_band,          # The input raster band to polygonize
+                mask_dataset.GetRasterBand(1),                 # A mask band (None means no mask)
+                layer,                # The layer to store polygons
+                0,                   # Index of the attribute field to store values (-1 means no values)
+                [],                   # Options list (empty in this case)
+                callback=None         # Progress callback (None means no progress reporting)
+            )
+            i = 0
+            for feature in layer:
+                # fid = feature.GetFID()
+                # id_it = formatting_number(field, number)
+                feature.SetField("Volume", volume)
+                layer.SetFeature(feature)  #added in order to save field value
+                feature.SetField("Volume_id", v_id)
+                layer.SetFeature(feature)  #added in order to save field value
+                feature.SetField("Initiation_Point", ip)
+                layer.SetFeature(feature)  #added in order to save field value
+
+def HazardVector(gpkg_filename, v, trans, crs):
+    gpkg_driver = ogr.GetDriverByName("GPKG")
+    try:
+        os.remove(gpkg_filename)
+    except:
+        pass
+
+    gpkg_ds = gpkg_driver.CreateDataSource(gpkg_filename)
+    
+    driver = gdal.GetDriverByName('MEM')  # In-memory raster driver
+    rows, cols = v.shape
+    raster_ds = driver.Create('', cols, rows, 1, gdal.GDT_Byte)  # 1 band, byte data type
+
+    # Set GeoTransform
+    raster_ds.SetGeoTransform((trans.c, trans.a, 0, trans.f, 0, trans.e))  # Example affine transform
+    # Define spatial reference (WGS 84 in this case, adjust as necessary)
+    spatial_ref = osr.SpatialReference()
+    # spatial_ref.ImportFromEPSG(4326)
+    spatial_ref.ImportFromWkt(crs.wkt)
+
+    raster_band = raster_ds.GetRasterBand(1)
+    raster_band.WriteArray(v)
+    # Set NoData value
+    raster_band.SetNoDataValue(0)
+    # Convert the mask to a GDAL in-memory raster
+    driver_mem = gdal.GetDriverByName('MEM')
+    mask_dataset = driver_mem.Create('', raster_band.XSize, raster_band.YSize, 1, gdal.GDT_Byte)
+
+    for x in np.unique(v):
+        if x !=0:
+            # Create a layer for the polygons
+            layer_name = "Proximal Hazard Zone"
+            layer = gpkg_ds.CreateLayer(layer_name, spatial_ref, ogr.wkbPolygon)
+
+            # Create a mask where the pixel value is 1
+            mask = np.equal(v, 1).astype(np.uint8)
+            mask_dataset.GetRasterBand(1).WriteArray(mask)
+            gdal.Polygonize(
+                raster_band,          # The input raster band to polygonize
+                mask_dataset.GetRasterBand(1),                 # A mask band (None means no mask)
+                layer,                # The layer to store polygons
+                -1,                   # Index of the attribute field to store values (-1 means no values)
+                [],                   # Options list (empty in this case)
+                callback=None         # Progress callback (None means no progress reporting)
+            )
+    raster_ds = None  # Close the raster dataset
+    gpkg_ds = None    # Close the GeoPackage
+
+def FinaliseVector(raster_ds, gkpg_ds):
+    raster_ds = None  # Close the raster dataset
+    gpkg_ds = None    # Close the GeoPackage
+    return raster_ds, gpkg_ds
 
 def lltransform(ll, dist, bearing):
     """returns new lon, lat of point [dist] away from [ll] at bearing [bearing]"""
